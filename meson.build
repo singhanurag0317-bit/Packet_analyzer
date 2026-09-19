@@ -25,7 +25,13 @@ engine_sources = files(
   'src/fast_path.cpp',
   'src/capture_source.cpp',
   'src/rules_store.cpp',
+  'src/ipc_emitter.cpp',
 )
+
+extra_deps = []
+if host_machine.system() == 'windows'
+  extra_deps += meson.get_compiler('cpp').find_library('ws2_32', required: true)
+endif
 
 # ---------------------------------------------------------------------------
 # Threads dependency (required for the multi-threaded fast-path engine)
@@ -57,7 +63,7 @@ endif
 dpi_engine = executable(
   'dpi_engine',
   engine_sources,
-  dependencies: [thread_dep] + pcap_deps,
+  dependencies: [thread_dep] + pcap_deps + extra_deps,
   include_directories: include_directories('include'),
   install: true,
 )
@@ -107,4 +113,21 @@ if get_option('tests')
     ],
     timeout: 15,
   )
+
+  py_mod = import('python')
+  py_inst = py_mod.find_installation('python3', required: false)
+  if not py_inst.found()
+    py_inst = py_mod.find_installation('python', required: false)
+  endif
+  if py_inst.found()
+    test(
+      'dashboard_tests',
+      py_inst,
+      args: [
+        '-m', 'pytest',
+        meson.current_source_dir() / 'dashboard' / 'test_dashboard.py',
+      ],
+      timeout: 30,
+    )
+  endif
 endif

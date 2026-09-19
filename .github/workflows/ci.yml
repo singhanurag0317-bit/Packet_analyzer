@@ -104,13 +104,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install deps
-        working-directory: dashboard
+      - name: Install dependencies
         run: |
-          pip install -r requirements.txt || echo "no requirements.txt yet"
+          pip install -r dashboard/requirements.txt
 
-      - name: Syntax check
-        working-directory: dashboard
+      - name: Run dashboard pytest suite
         run: |
-          python -m py_compile server.py || echo "server.py missing (Track C not started)"
-          echo "Dashboard syntax check complete"
+          python -m pytest dashboard/test_dashboard.py

@@ -963,6 +963,35 @@ build/dpi_cli export new_rules.json
 build/dpi_cli --store my_rules.json add-rule --type port --value 22
 ```
 
+### Running the Web Dashboard (Track C)
+
+The Web Dashboard monitors traffic, active connections, blocked rules, and security anomalies in real time with Chart.js visualization and HTML/PDF report export.
+
+1. **Install Python dependencies:**
+```bash
+pip install -r dashboard/requirements.txt
+```
+
+2. **Launch the Dashboard server (UI on port 8000, IPC socket on port 9000):**
+```bash
+uvicorn dashboard.server:app --host 0.0.0.0 --port 8000
+```
+Then open `http://localhost:8000` in your web browser.
+
+3. **Stream live traffic or PCAP replay from C++ Engine to Dashboard:**
+```bash
+# Stream stats during file replay:
+build/dpi_engine input.pcap output.pcap --export-stats 9000
+
+# Stream stats during live network capture:
+build/dpi_engine -i eth0 -o live.pcap --rules rules.json --export-stats 9000
+```
+
+4. **Run Dashboard test suite:**
+```bash
+pytest dashboard/test_dashboard.py
+```
+
 ### Creating Test Data
 
 ```bash

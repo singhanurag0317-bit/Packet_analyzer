@@ -1,6 +1,6 @@
 # Packet_analyzer — Real-Time DPI System Project Plan
 
-**Status:** v1.1 — Track A (M0 + M1) delivered, CI green on all 3 OS + live capture
+**Status:** v1.2 — Track A (M0 + M1) & Track C (M4) delivered, dashboard + IPC verified
 **Lead:** Naman Singh (namann5)
 
 ## Contributors
@@ -10,7 +10,7 @@
 | **Lead** | Naman Singh ([@namann5](https://github.com/namann5)) |
 | Track A — Capture + Rules | Naman Singh ([@namann5](https://github.com/namann5)) — delivered, see §5 |
 | Track B — Security | _TBD_ |
-| Track C — Dashboard | _TBD_ |
+| Track C — Dashboard | Delivered, see §7 |
 **Target platform:** Cross-platform (Windows native + Linux / WSL)
 **Build system:** Meson
 **Baseline:** Existing C++17 DPI engine (~4,600 LOC) — PCAP replay, SNI/Host extraction, thread-safe rule engine, multi-threaded fast-path. No external deps.
@@ -40,7 +40,7 @@ The plan is split so each block is independently demoable and can be handed to o
 |---|---|---|---|
 | **A — Capture + Rules** | ✅ delivered (§5) | libpcap live capture, PCAP↔live abstraction, persistent JSON rules, rules CLI, Meson build | `dpi_engine -i eth0` classes real packets; CRUD rules; survive restart |
 | **B — Security** | _TBD_ | Port scan, SYN flood, DNS tunneling detectors; URLhaus blocklist; VPN fingerprinting | Feed malicious pcap → detected & blocked; VPN traffic flagged `VPN_DETECTED` |
-| **C — Dashboard** | _TBD_ | FastAPI + WebSocket + Chart.js, REST API, PDF/HTML reports, IPC bridge to C++ | Live-updating charts of blocked traffic, app breakdown, throughput; export report |
+| **C — Dashboard** | ✅ delivered (§7) | FastAPI + WebSocket + Chart.js, REST API, PDF/HTML reports, IPC bridge to C++ | Live-updating charts of blocked traffic, app breakdown, throughput; export report |
 
 > Cross-cutting integration contract (below) must be agreed FIRST so tracks can proceed in parallel.
 
@@ -190,6 +190,8 @@ Match → label connection `VPN_DETECTED`; optionally blockable; surfaced in das
 
 ## 7. Track C — Web Dashboard + Reports
 
+**Status: ✅ DELIVERED (M4 gate met)** — WebSocket streaming, live charts, live connection inspector, REST API, and PDF/HTML report export verified.
+
 ### 7.1 Backend (FastAPI) — `dashboard/`
 - `dashboard/server.py` — FastAPI app
 - **IPC bridge:** connects to C++ engine socket, receives event/stats JSON (contract §4)
@@ -224,7 +226,7 @@ Match → label connection `VPN_DETECTED`; optionally blockable; surfaced in das
 | M1 | Live capture + JSON/SQLite rules + CLI | A | ✅ Done — live capture classifies; rules survive restart (JSON store; SQLite backlog) |
 | M2 | Anomaly detectors + VPN fingerprint (offline data) | B | Crafted pcap triggers all 3 + VPN flag |
 | M3 | URLhaus blocklist + auto-block | B | Known-bad domain blocked on live/fake stream |
-| M4 | Dashboard backend + WS streaming (fake feed) | C | Charts move; REST works |
+| M4 | Dashboard backend + WS streaming (fake feed) | C | ✅ Done — Charts move, live connection inspector, REST & PDF/HTML reports verified |
 | M5 | End-to-end: live capture → security → dashboard → report | A+B+C | Full demo |
 
 ---
@@ -248,5 +250,5 @@ Match → label connection `VPN_DETECTED`; optionally blockable; surfaced in das
 - [x] Track A delivered — live capture + JSON rules CLI (M1)
 - [ ] Assign B / C owners (§2)
 - [ ] Unblock Track B with its demo criteria (§6.6)
-- [ ] Unblock Track C with its demo criteria (§7.4)
+- [x] Unblock Track C with its demo criteria (§7.4)
 - [ ] Decide SQLite backend for rules (backlog, §5.2)

@@ -86,6 +86,8 @@ enum class AppType {
 std::string appTypeToString(AppType type);
 AppType sniToAppType(const std::string& sni);
 
+std::string formatIP(uint32_t ip);
+
 // ============================================================================
 // Connection State
 // ============================================================================
@@ -164,9 +166,31 @@ struct DPIStats {
     std::atomic<uint64_t> udp_packets{0};
     std::atomic<uint64_t> other_packets{0};
     std::atomic<uint64_t> active_connections{0};
-    
+
+    // Blocked breakdown counters
+    std::atomic<uint64_t> blocked_total{0};
+    std::atomic<uint64_t> blocked_by_ip{0};
+    std::atomic<uint64_t> blocked_by_port{0};
+    std::atomic<uint64_t> blocked_by_app{0};
+    std::atomic<uint64_t> blocked_by_domain{0};
+    std::atomic<uint64_t> blocked_by_malicious{0};
+    std::atomic<uint64_t> blocked_by_vpn{0};
+
+    // Security anomaly alert counters
+    std::atomic<uint64_t> scan_alerts{0};
+    std::atomic<uint64_t> syn_flood_alerts{0};
+    std::atomic<uint64_t> dns_tunnel_alerts{0};
+
+    // Application breakdown counters
+    std::atomic<uint64_t> app_counts[static_cast<size_t>(AppType::APP_COUNT)];
+
+    DPIStats() {
+        for (size_t i = 0; i < static_cast<size_t>(AppType::APP_COUNT); ++i) {
+            app_counts[i].store(0);
+        }
+    }
+
     // Non-copyable due to atomics
-    DPIStats() = default;
     DPIStats(const DPIStats&) = delete;
     DPIStats& operator=(const DPIStats&) = delete;
 };

@@ -242,6 +242,87 @@
     }
     .talker-pct { color: var(--text-dim); text-align: right; }
 
+    /* ── Connection Inspector ────────────────────────────── */
+    .inspector-panel {
+      border-bottom: 1px solid var(--border);
+      background: #020802;
+    }
+    .inspector-controls {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+      padding: 8px 16px;
+      border-bottom: 1px solid #061606;
+      background: #030d03;
+    }
+    .filter-group { display: flex; gap: 6px; }
+    .filter-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-family: inherit; font-size: 0.68rem;
+      padding: 3px 10px; cursor: pointer;
+      letter-spacing: .08em;
+      transition: all 0.15s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      border-color: var(--green-dim);
+      color: var(--green);
+      background: var(--green-dark);
+    }
+    .filter-btn.danger:hover, .filter-btn.danger.active {
+      border-color: var(--red);
+      color: var(--red);
+      background: #1f0505;
+    }
+    .search-box {
+      display: flex; align-items: center; gap: 6px;
+      flex: 1; max-width: 380px;
+    }
+    #conn-search {
+      width: 100%; background: #010601;
+      border: 1px solid var(--border);
+      color: var(--green);
+      font-family: inherit; font-size: 0.72rem;
+      padding: 4px 8px; outline: none;
+    }
+    #conn-search:focus {
+      border-color: var(--green-dim);
+      box-shadow: 0 0 6px rgba(0,255,65,0.2);
+    }
+    .conn-count { font-size: 0.68rem; color: var(--text-dim); letter-spacing: .08em; }
+
+    .table-container {
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .conn-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 0.70rem;
+    }
+    .conn-table th {
+      position: sticky; top: 0;
+      background: #020a02; color: var(--text-dim);
+      font-weight: normal; text-align: left;
+      padding: 6px 12px; border-bottom: 1px solid var(--border);
+      letter-spacing: .08em; z-index: 2;
+    }
+    .conn-table td {
+      padding: 5px 12px;
+      border-bottom: 1px solid #061606;
+      white-space: nowrap;
+    }
+    .conn-table tr:hover td { background: rgba(0,255,65,0.03); }
+
+    .tag-allowed {
+      color: var(--green-dim);
+      font-weight: 700;
+    }
+    .tag-blocked {
+      color: var(--red);
+      font-weight: 700;
+      text-shadow: 0 0 4px var(--red-dim);
+    }
+
     /* ── Action bar ───────────────────────────────────────── */
     .action-bar {
       display: flex; align-items: center; gap: 14px;
@@ -279,6 +360,16 @@
       background: #1a1000;
       box-shadow: 0 0 10px var(--amber-dim);
     }
+    .btn-pause {
+      border-color: var(--cyan, #00e5ff);
+      color: var(--cyan, #00e5ff);
+    }
+    .btn-pause:hover, .btn-pause.paused {
+      background: rgba(0,229,255,0.15);
+      border-color: #00e5ff;
+      color: #00e5ff;
+      box-shadow: 0 0 10px rgba(0,229,255,0.4);
+    }
     .btn-clear {
       border-color: var(--text-dim);
       color: var(--text-dim);
@@ -292,7 +383,7 @@
     }
 
     /* ── Scrollbar ────────────────────────────────────────── */
-    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: #020802; }
     ::-webkit-scrollbar-thumb { background: var(--border); }
 
@@ -402,11 +493,47 @@
   </div>
 </div>
 
+<!-- ── Connection Inspector ── -->
+<div class="section-bar">LIVE CONNECTION INSPECTOR (RING BUFFER)</div>
+<div class="inspector-panel">
+  <div class="inspector-controls">
+    <div class="filter-group">
+      <button class="filter-btn active" id="filter-all" onclick="setConnFilter('all')">[ ALL ]</button>
+      <button class="filter-btn" id="filter-allowed" onclick="setConnFilter('allowed')">[ ALLOWED ]</button>
+      <button class="filter-btn danger" id="filter-blocked" onclick="setConnFilter('blocked')">[ BLOCKED ]</button>
+    </div>
+    <div class="search-box">
+      <span class="prompt-sym">&gt;</span>
+      <input type="text" id="conn-search" placeholder="Filter by IP, App, Proto, or Reason..." oninput="filterConnections()">
+    </div>
+    <span class="conn-count" id="conn-count-display">0 flows</span>
+  </div>
+  <div class="table-container">
+    <table class="conn-table">
+      <thead>
+        <tr>
+          <th>TIME</th>
+          <th>PROTO</th>
+          <th>SOURCE</th>
+          <th>DESTINATION</th>
+          <th>APPLICATION</th>
+          <th>SIZE</th>
+          <th>STATUS / REASON</th>
+        </tr>
+      </thead>
+      <tbody id="conn-table-body">
+        <tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:14px;">Monitoring connection stream...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <!-- ── Action bar ── -->
 <div class="action-bar">
   <span class="prompt-sym">$&gt;</span>
   <button class="btn btn-html" onclick="exportReport('html')">[ EXPORT HTML ]</button>
   <button class="btn btn-pdf"  onclick="exportReport('pdf')"> [ EXPORT PDF  ]</button>
+  <button class="btn btn-pause" id="btn-pause" onclick="toggleStreamPause()">[ ⏸ PAUSE STREAM ]</button>
   <button class="btn btn-clear" onclick="clearAlerts()">       [ CLEAR LOG   ]</button>
   <span class="uptime" id="uptime-display">UPTIME: 00:00:00</span>
 </div>

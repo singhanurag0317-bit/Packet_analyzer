@@ -41,6 +41,9 @@ Options:
   --block-ip <ip>         Block packets from source IP
   --block-app <app>       Block application (e.g., YouTube, Facebook)
   --block-domain <dom>    Block domain (supports wildcards: *.facebook.com)
+  --export-stats [port]   Stream live JSON events to dashboard IPC port (default: 9000)
+  --ipc-host <host>       Dashboard IPC host (default: 127.0.0.1)
+  --ipc-port <port>       Dashboard IPC port (default: 9000)
   -o <file>               Output PCAP for forwarded traffic (live mode)
   --lbs <n>               Number of load balancer threads (default: 2)
   --fps <n>               FP threads per LB (default: 2)
@@ -49,7 +52,7 @@ Options:
 
 Examples:
   )" << program << R"( capture.pcap filtered.pcap
-  )" << program << R"( -i eth0 -o live.pcap --rules rules.json
+  )" << program << R"( -i eth0 -o live.pcap --rules rules.json --export-stats 9000
   )" << program << R"( -l
   )" << program << R"( capture.pcap filtered.pcap --block-app YouTube --rules rules.json
 )";
@@ -127,6 +130,19 @@ int main(int argc, char* argv[]) {
             block_apps.push_back(argv[++i]);
         } else if (arg == "--block-domain" && i + 1 < argc) {
             block_domains.push_back(argv[++i]);
+        } else if (arg == "--export-stats" || arg == "--ipc") {
+            config.enable_ipc = true;
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                try {
+                    config.ipc_port = static_cast<uint16_t>(std::stoi(argv[++i]));
+                } catch (...) {}
+            }
+        } else if (arg == "--ipc-host" && i + 1 < argc) {
+            config.ipc_host = argv[++i];
+            config.enable_ipc = true;
+        } else if (arg == "--ipc-port" && i + 1 < argc) {
+            config.ipc_port = static_cast<uint16_t>(std::stoi(argv[++i]));
+            config.enable_ipc = true;
         } else if (arg == "--rules" && i + 1 < argc) {
             rules_store_path = argv[++i];
         } else if (arg == "--lbs" && i + 1 < argc) {

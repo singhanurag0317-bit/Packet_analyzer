@@ -9,6 +9,7 @@
 #include "rule_manager.h"
 #include "connection_tracker.h"
 #include "capture_source.h"
+#include "ipc_emitter.h"
 #include <memory>
 #include <thread>
 #include <atomic>
@@ -143,6 +144,7 @@ public:
     RuleManager& getRuleManager() { return *rule_manager_; }
     const Config& getConfig() const { return config_; }
     bool isRunning() const { return running_; }
+    IPCEmitter* getIPCEmitter() { return ipc_emitter_.get(); }
 
 private:
     Config config_;
@@ -150,6 +152,7 @@ private:
     // Shared components
     std::unique_ptr<RuleManager> rule_manager_;
     std::unique_ptr<GlobalConnectionTable> global_conn_table_;
+    std::unique_ptr<IPCEmitter> ipc_emitter_;
     
     // Thread pools
     std::unique_ptr<FPManager> fp_manager_;
@@ -172,9 +175,11 @@ private:
     
     // Reader thread (separate for PCAP input)
     std::thread reader_thread_;
+    std::thread ipc_thread_;
     
-    // Output handling
+    // Output & IPC handling
     void outputThreadFunc();
+    void ipcThreadFunc();
     void handleOutput(const PacketJob& job, PacketAction action);
     
     // Write PCAP header to output file

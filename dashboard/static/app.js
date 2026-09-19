@@ -275,8 +275,116 @@ function appendAlert(event) {
   alertFeed.prepend(li);
 }
 
+// ── Connection Inspector ───────────────────────────────────────────────────
+let connStore = [];
+let connFilter = "all";
+let isStreamPaused = false;
+
+function setConnFilter(filter) {
+  connFilter = filter;
+  document.querySelectorAll(".filter-btn").forEach(btn => btn.classList.remove("active"));
+  const btn = document.getElementById(`filter-${filter}`);
+  if (btn) btn.classList.add("active");
+  renderConnections();
+}
+
+function filterConnections() {
+  renderConnections();
+}
+
+function toggleStreamPause() {
+  isStreamPaused = !isStreamPaused;
+  const btn = document.getElementById("btn-pause");
+  if (btn) {
+    if (isStreamPaused) {
+      btn.textContent = "[ ▶ RESUME STREAM ]";
+      btn.classList.add("paused");
+      showToast("STREAM PAUSED — CHARTS & LOG FROZEN");
+    } else {
+      btn.textContent = "[ ⏸ PAUSE STREAM ]";
+      btn.classList.remove("paused");
+      showToast("STREAM RESUMED");
+    }
+  }
+}
+
+function addConnection(conn) {
+  if (!conn) return;
+  connStore.unshift(conn);
+  if (connStore.length > 200) connStore.pop();
+  if (!isStreamPaused) {
+    renderConnections();
+  }
+}
+
+function renderConnections() {
+  const tbody = document.getElementById("conn-table-body");
+  const countDisplay = document.getElementById("conn-count-display");
+  const search = (document.getElementById("conn-search")?.value || "").toLowerCase().trim();
+
+  let filtered = connStore;
+
+  if (connFilter === "allowed") {
+    filtered = filtered.filter(c => !c.blocked);
+  } else if (connFilter === "blocked") {
+    filtered = filtered.filter(c => c.blocked);
+  }
+
+  if (search) {
+    filtered = filtered.filter(c => {
+      const ft = c.five_tuple || {};
+      const src = `${ft.src_ip || ""}:${ft.src_port || ""}`.toLowerCase();
+      const dst = `${ft.dst_ip || ""}:${ft.dst_port || ""}`.toLowerCase();
+      const proto = String(ft.proto || "").toLowerCase();
+      const app = String(c.app || "").toLowerCase();
+      const reason = String(c.reason || "").toLowerCase();
+      return src.includes(search) || dst.includes(search) || proto.includes(search) || app.includes(search) || reason.includes(search);
+    });
+  }
+
+  if (countDisplay) {
+    countDisplay.textContent = `${filtered.length} flows shown`;
+  }
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:14px;">No matching connections.</td></tr>`;
+    return;
+  }
+
+  const rowsHtml = filtered.slice(0, 50).map(c => {
+    const ft = c.five_tuple || {};
+    const tsStr = c.ts ? new Date(c.ts * 1000).toLocaleTimeString("en-GB") : nowTs();
+    const proto = ft.proto || "TCP";
+    const src = `${ft.src_ip || "-"}:${ft.src_port || "-"}`;
+    const dst = `${ft.dst_ip || "-"}:${ft.dst_port || "-"}`;
+    const app = c.app || "Unknown";
+    const size = fmtBytes(c.bytes || c.length || c.packet_len || 512);
+
+    let statusHtml;
+    if (c.blocked) {
+      const reason = c.reason ? ` [${c.reason}]` : "";
+      statusHtml = `<span class="tag-blocked">BLOCKED${reason}</span>`;
+    } else {
+      statusHtml = `<span class="tag-allowed">ALLOWED</span>`;
+    }
+
+    return `<tr>
+      <td style="color:var(--text-dim);">${tsStr}</td>
+      <td style="color:var(--cyan);">${proto}</td>
+      <td>${src}</td>
+      <td>${dst}</td>
+      <td style="color:var(--green);font-weight:700;">${app}</td>
+      <td>${size}</td>
+      <td>${statusHtml}</td>
+    </tr>`;
+  }).join("");
+
+  tbody.innerHTML = rowsHtml;
+}
+
 // ── Master update ────────────────────────────────────────────────────────────
 function handleSnapshot(snap) {
+  if (isStreamPaused) return;
   updateStats(snap);
   updateThroughput(snap.throughput_bps);
   updateAppChart(snap.app_breakdown);
@@ -343,14 +451,20 @@ function connect() {
   ws.onmessage = ({ data }) => {
     try {
       const msg = JSON.parse(data);
-      if (msg.event === "anomaly") appendAlert(msg);
-      else handleSnapshot(msg);
+      if (msg.event === "anomaly") {
+        if (!isStreamPaused) appendAlert(msg);
+      } else if (msg.event === "app_classified") {
+        addConnection(msg);
+      } else {
+        handleSnapshot(msg);
+      }
     } catch(_) {}
   };
 }
 
-// ── Periodic event poll ──────────────────────────────────────────────────────
+// ── Periodic event & connection poll ─────────────────────────────────────────
 async function pollEvents() {
+  if (isStreamPaused) return;
   try {
     const res = await fetch("/api/events");
     const events = await res.json();
@@ -362,7 +476,22 @@ async function pollEvents() {
   } catch(_) {}
 }
 
+async function pollConnections() {
+  if (isStreamPaused) return;
+  try {
+    const res = await fetch("/api/connections");
+    const conns = await res.json();
+    if (Array.isArray(conns) && conns.length > 0) {
+      connStore = conns;
+      renderConnections();
+    }
+  } catch(_) {}
+}
+
 // ── Boot ─────────────────────────────────────────────────────────────────────
 initCharts();
 connect();
-setInterval(pollEvents, 12000);
+pollConnections();
+setInterval(pollEvents, 8000);
+setInterval(pollConnections, 3000);
+

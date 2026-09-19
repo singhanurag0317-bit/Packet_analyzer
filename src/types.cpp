@@ -6,24 +6,21 @@
 
 namespace DPI {
 
+std::string formatIP(uint32_t ip) {
+    std::ostringstream s;
+    s << ((ip >> 0) & 0xFF) << "."
+      << ((ip >> 8) & 0xFF) << "."
+      << ((ip >> 16) & 0xFF) << "."
+      << ((ip >> 24) & 0xFF);
+    return s.str();
+}
+
 std::string FiveTuple::toString() const {
     std::ostringstream ss;
-    
-    // Format IP addresses
-    auto formatIP = [](uint32_t ip) {
-        std::ostringstream s;
-        s << ((ip >> 0) & 0xFF) << "."
-          << ((ip >> 8) & 0xFF) << "."
-          << ((ip >> 16) & 0xFF) << "."
-          << ((ip >> 24) & 0xFF);
-        return s.str();
-    };
-    
     ss << formatIP(src_ip) << ":" << src_port
        << " -> "
        << formatIP(dst_ip) << ":" << dst_port
        << " (" << (protocol == 6 ? "TCP" : protocol == 17 ? "UDP" : "?") << ")";
-    
     return ss.str();
 }
 
