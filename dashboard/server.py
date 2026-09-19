@@ -16,12 +16,17 @@ import json
 import random
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 from xml.sax.saxutils import escape as xml_escape
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
+
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+INDEX_HTML_PATH = STATIC_DIR / "index.html"
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -357,7 +362,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Packet Analyzer Dashboard", lifespan=lifespan)
 
 # Serve frontend static files
-app.mount("/static", StaticFiles(directory="dashboard/static"), name="static")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 # ---------------------------------------------------------------------------
@@ -559,5 +564,5 @@ async def export_report(format: str = "html"):
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    with open("dashboard/static/index.html", encoding="utf-8") as f:
+    with open(INDEX_HTML_PATH, encoding="utf-8") as f:
         return f.read()

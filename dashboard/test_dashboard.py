@@ -243,6 +243,14 @@ def test_api_events():
     assert data[0]["type"] == "SYN_FLOOD"
 
 
+def test_root_endpoint():
+    client = TestClient(app)
+    res = client.get("/")
+    assert res.status_code == 200
+    assert "text/html" in res.headers.get("content-type", "")
+    assert "PACKET ANALYZER" in res.text
+
+
 # ============================================================================
 # 3. Report Generation Tests (HTML and PDF)
 # ============================================================================
