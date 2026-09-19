@@ -1,4 +1,5 @@
 #include "fast_path.h"
+#include "ipc_emitter.h"
 #include <iostream>
 #include <sstream>
 #include <iomanip>

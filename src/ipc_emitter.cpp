@@ -16,6 +16,7 @@
   #include <arpa/inet.h>
   #include <netdb.h>
   #include <unistd.h>
+  #include <sys/time.h>
 #endif
 
 #ifndef MSG_NOSIGNAL
@@ -45,10 +46,17 @@ IPCEmitter::IPCEmitter() {
 #ifdef _WIN32
     initWSA();
 #endif
+    running_ = true;
+    sender_thread_ = std::thread(&IPCEmitter::senderLoop, this);
 }
 
 IPCEmitter::~IPCEmitter() {
-    disconnect();
+    running_ = false;
+    queue_.shutdown();
+    closeSocket();
+    if (sender_thread_.joinable()) {
+        sender_thread_.join();
+    }
 #ifdef _WIN32
     cleanupWSA();
 #endif
@@ -82,28 +90,38 @@ std::string IPCEmitter::escapeJSONString(const std::string& input) {
 
 bool IPCEmitter::connect(const std::string& host, uint16_t port) {
     std::lock_guard<std::mutex> lock(socket_mutex_);
-
-    if (connected_) {
-        if (host_ == host && port_ == port) {
-            return true;
-        }
-        // Endpoint changed - disconnect existing socket first
-#ifdef _WIN32
-        if (sock_ != ~0ULL) {
-            ::closesocket(static_cast<SOCKET>(sock_));
-            sock_ = ~0ULL;
-        }
-#else
-        if (sock_ >= 0) {
-            ::close(sock_);
-            sock_ = -1;
-        }
-#endif
-        connected_ = false;
+    if (host_ == host && port_ == port && connected_) {
+        return true;
     }
-
     host_ = host;
     port_ = port;
+    closeSocket();
+    return true;
+}
+
+void IPCEmitter::disconnect() {
+    closeSocket();
+}
+
+void IPCEmitter::closeSocket() {
+    std::lock_guard<std::mutex> lock(socket_mutex_);
+#ifdef _WIN32
+    if (sock_ != ~0ULL) {
+        ::closesocket(static_cast<SOCKET>(sock_));
+        sock_ = ~0ULL;
+    }
+#else
+    if (sock_ >= 0) {
+        ::close(sock_);
+        sock_ = -1;
+    }
+#endif
+    connected_ = false;
+}
+
+bool IPCEmitter::internalConnect() {
+    std::lock_guard<std::mutex> lock(socket_mutex_);
+    if (connected_) return true;
 
     struct addrinfo hints{}, *res = nullptr;
     std::memset(&hints, 0, sizeof(hints));
@@ -122,6 +140,9 @@ bool IPCEmitter::connect(const std::string& host, uint16_t port) {
         freeaddrinfo(res);
         return false;
     }
+    // Set 200ms send timeout so slow consumer won't hang sender thread
+    DWORD timeout = 200;
+    setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
     sock_ = static_cast<uintptr_t>(s);
 #else
     int s = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
@@ -129,63 +150,42 @@ bool IPCEmitter::connect(const std::string& host, uint16_t port) {
         freeaddrinfo(res);
         return false;
     }
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 200000;
+    setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const void*)&tv, sizeof(tv));
     sock_ = s;
 #endif
 
-    if (::connect(static_cast<
 #ifdef _WIN32
-        SOCKET
-#else
-        int
-#endif
-    >(sock_), res->ai_addr, static_cast<socklen_t>(res->ai_addrlen)) < 0) {
+    if (::connect(static_cast<SOCKET>(sock_), res->ai_addr, static_cast<int>(res->ai_addrlen)) < 0) {
         freeaddrinfo(res);
-#ifdef _WIN32
         ::closesocket(static_cast<SOCKET>(sock_));
         sock_ = ~0ULL;
-#else
-        ::close(sock_);
-        sock_ = -1;
-#endif
         connected_ = false;
         return false;
     }
+#else
+    if (::connect(sock_, res->ai_addr, static_cast<socklen_t>(res->ai_addrlen)) < 0) {
+        freeaddrinfo(res);
+        ::close(sock_);
+        sock_ = -1;
+        connected_ = false;
+        return false;
+    }
+#endif
 
     freeaddrinfo(res);
     connected_ = true;
     return true;
 }
 
-void IPCEmitter::disconnect() {
+bool IPCEmitter::internalSend(const std::string& line) {
     std::lock_guard<std::mutex> lock(socket_mutex_);
-#ifdef _WIN32
-    if (sock_ != ~0ULL) {
-        ::closesocket(static_cast<SOCKET>(sock_));
-        sock_ = ~0ULL;
-    }
-#else
-    if (sock_ >= 0) {
-        ::close(sock_);
-        sock_ = -1;
-    }
-#endif
-    connected_ = false;
-}
-
-bool IPCEmitter::sendRawJson(const std::string& json_str) {
-    if (!connected_) {
-        return false;
-    }
-
-    std::string line = json_str + "\n";
-    std::lock_guard<std::mutex> lock(socket_mutex_);
-
-    if (!connected_) {
-        return false;
-    }
+    if (!connected_) return false;
 
     size_t total_sent = 0;
-    while (total_sent < line.size()) {
+    while (total_sent < line.size() && running_) {
         int bytes_sent = ::send(
             static_cast<
 #ifdef _WIN32
@@ -200,17 +200,6 @@ bool IPCEmitter::sendRawJson(const std::string& json_str) {
         );
 
         if (bytes_sent <= 0) {
-#ifdef _WIN32
-            if (sock_ != ~0ULL) {
-                ::closesocket(static_cast<SOCKET>(sock_));
-                sock_ = ~0ULL;
-            }
-#else
-            if (sock_ >= 0) {
-                ::close(sock_);
-                sock_ = -1;
-            }
-#endif
             connected_ = false;
             return false;
         }
@@ -218,6 +207,37 @@ bool IPCEmitter::sendRawJson(const std::string& json_str) {
     }
 
     return true;
+}
+
+void IPCEmitter::senderLoop() {
+    auto last_connect_try = std::chrono::steady_clock::now() - std::chrono::seconds(5);
+
+    while (running_) {
+        auto item = queue_.popWithTimeout(std::chrono::milliseconds(50));
+        if (!running_) break;
+        if (!item.has_value()) continue;
+
+        std::string line = *item + "\n";
+
+        if (!connected_) {
+            auto now = std::chrono::steady_clock::now();
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_connect_try).count() >= 500) {
+                last_connect_try = now;
+                internalConnect();
+            }
+        }
+
+        if (connected_) {
+            if (!internalSend(line)) {
+                closeSocket();
+            }
+        }
+    }
+}
+
+bool IPCEmitter::sendRawJson(const std::string& json_str) {
+    if (!running_) return false;
+    return queue_.tryPush(json_str);
 }
 
 void IPCEmitter::emitAppClassified(const FiveTuple& tuple,

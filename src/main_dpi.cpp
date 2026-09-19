@@ -58,6 +58,18 @@ Examples:
 )";
 }
 
+bool parsePort(const std::string& str, uint16_t& out_port) {
+    try {
+        size_t idx = 0;
+        long val = std::stol(str, &idx);
+        if (idx == str.size() && val >= 1 && val <= 65535) {
+            out_port = static_cast<uint16_t>(val);
+            return true;
+        }
+    } catch (...) {}
+    return false;
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -133,16 +145,24 @@ int main(int argc, char* argv[]) {
         } else if (arg == "--export-stats" || arg == "--ipc") {
             config.enable_ipc = true;
             if (i + 1 < argc && argv[i + 1][0] != '-') {
-                try {
-                    config.ipc_port = static_cast<uint16_t>(std::stoi(argv[++i]));
-                } catch (...) {}
+                uint16_t port = 0;
+                if (parsePort(argv[i + 1], port)) {
+                    config.ipc_port = port;
+                    ++i;
+                }
             }
         } else if (arg == "--ipc-host" && i + 1 < argc) {
             config.ipc_host = argv[++i];
             config.enable_ipc = true;
         } else if (arg == "--ipc-port" && i + 1 < argc) {
-            config.ipc_port = static_cast<uint16_t>(std::stoi(argv[++i]));
-            config.enable_ipc = true;
+            uint16_t port = 0;
+            if (parsePort(argv[++i], port)) {
+                config.ipc_port = port;
+                config.enable_ipc = true;
+            } else {
+                std::cerr << "Invalid port for --ipc-port (must be 1-65535): " << argv[i] << "\n";
+                return 1;
+            }
         } else if (arg == "--rules" && i + 1 < argc) {
             rules_store_path = argv[++i];
         } else if (arg == "--lbs" && i + 1 < argc) {

@@ -974,8 +974,11 @@ pip install -r dashboard/requirements.txt
 
 2. **Launch the Dashboard server (UI on port 8000, IPC socket on port 9000):**
 ```bash
-uvicorn dashboard.server:app --host 0.0.0.0 --port 8000
+uvicorn dashboard.server:app --host 127.0.0.1 --port 8000
 ```
+> [!NOTE]
+> By default, the dashboard binds to localhost (`127.0.0.1`). If binding to all interfaces (`--host 0.0.0.0`) in a network deployment, ensure appropriate reverse-proxy (e.g. Nginx/Caddy) with authentication and TLS encryption is configured to protect traffic telemetry and report export endpoints.
+
 Then open `http://localhost:8000` in your web browser.
 
 3. **Stream live traffic or PCAP replay from C++ Engine to Dashboard:**

@@ -108,7 +108,7 @@ def main() -> None:
     print("📡  PACKET ANALYZER — TRACK C FEED SIMULATOR")
     print(f"    Target Server: {args.host}:{args.port}")
     print(f"    Packet Rate:   {args.rate} pkts/sec")
-    print(f"    Anomaly Rate:  {args.anomalies * 100:.1f}% per tick")
+    print(f"    Anomaly Rate:  {args.anomalies * 100:.1f}% per sec")
     print(f"    Duration:      {'Infinite' if args.duration == 0 else f'{args.duration}s'}")
     print("=" * 65)
 

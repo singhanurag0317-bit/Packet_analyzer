@@ -6,6 +6,7 @@
 #include "connection_tracker.h"
 #include "rule_manager.h"
 #include "sni_extractor.h"
+#include "ipc_emitter.h"
 #include <thread>
 #include <atomic>
 #include <memory>

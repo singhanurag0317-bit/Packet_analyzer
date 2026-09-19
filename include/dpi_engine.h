@@ -61,6 +61,9 @@ public:
         size_t queue_size = 10000;
         std::string rules_file;
         bool verbose = false;
+        bool enable_ipc = false;
+        std::string ipc_host = "127.0.0.1";
+        uint16_t ipc_port = 9000;
     };
     
     DPIEngine(const Config& config);

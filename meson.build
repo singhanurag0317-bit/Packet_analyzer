@@ -120,14 +120,17 @@ if get_option('tests')
     py_inst = py_mod.find_installation('python', required: false)
   endif
   if py_inst.found()
-    test(
-      'dashboard_tests',
-      py_inst,
-      args: [
-        '-m', 'pytest',
-        meson.current_source_dir() / 'dashboard' / 'test_dashboard.py',
-      ],
-      timeout: 30,
-    )
+    r = run_command(py_inst, '-c', 'import pytest', check: false)
+    if r.returncode() == 0
+      test(
+        'dashboard_tests',
+        py_inst,
+        args: [
+          '-m', 'pytest',
+          meson.current_source_dir() / 'dashboard' / 'test_dashboard.py',
+        ],
+        timeout: 30,
+      )
+    endif
   endif
 endif
