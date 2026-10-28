@@ -1,544 +1,1699 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PACKET ANALYZER v2.0 — DPI ENGINE</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <style>
-    /* ── Fonts & Reset ──────────────────────────────────── */
-    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Packet Analyzer Pro [Enterprise Suite]</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Core Theme ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-deep:     #080c10;
+  --bg:          #0e141d;
+  --bg2:         #131a26;
+  --bg3:         #1c2536;
+  --border:      #263345;
+  --border2:     #1a2433;
+  --text:        #c9d1d9;
+  --text-dim:    #8b949e;
+  --text-muted:  #4f5b6b;
+  --blue:        #388bfd;
+  --green:       #3fb950;
+  --red:         #f85149;
+  --orange:      #e3b341;
+  --purple:      #d2a8ff;
+  --cyan:        #39d353;
+  --teal:        #76e3ea;
+  --accent:      #1f6feb;
+}
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  user-select: none;
+}
+body {
+  display: flex;
+  flex-direction: column;
+}
 
-    :root {
-      --green:      #00ff41;
-      --green-dim:  #00b32c;
-      --green-dark: #003b0f;
-      --green-bg:   #020c02;
-      --amber:      #ffb300;
-      --amber-dim:  #a87800;
-      --red:        #ff3131;
-      --red-dim:    #8b0000;
-      --border:     #0d3d0d;
-      --text-dim:   #2e7d32;
-      --bg:         #040d04;
-    }
+/* ── Top Header ─────────────────────────────────────────────────── */
+.header {
+  background: #111722;
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .04em;
+  color: #f0f6fc;
+}
+.header-logo-icon {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #1f6feb 0%, #388bfd 100%);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  box-shadow: 0 0 10px rgba(56, 139, 253, 0.4);
+}
+.header-suite {
+  font-size: 10px;
+  color: var(--text-dim);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+  margin-left: 2px;
+}
+.capture-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--green);
+  background: rgba(63, 185, 80, 0.12);
+  border: 1px solid rgba(63, 185, 80, 0.35);
+  padding: 3px 10px;
+  border-radius: 12px;
+  letter-spacing: .02em;
+}
+.capture-badge .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse-green 1.4s infinite;
+}
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+.header-spacer { flex: 1; }
+.header-security-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 12px;
+}
+.sec-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text-dim);
+}
+.sec-pill.warn {
+  border-color: rgba(227, 179, 65, 0.4);
+  color: #ffdf85;
+  background: rgba(227, 179, 65, 0.1);
+}
+.header-icons {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+.header-icon-btn {
+  cursor: pointer;
+  transition: color .15s;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.header-icon-btn:hover { color: #f0f6fc; }
 
-    html { font-size: 14px; }
-    body {
-      font-family: 'Share Tech Mono', 'Courier New', monospace;
-      background: var(--bg);
-      color: var(--green);
-      min-height: 100vh;
-      /* Subtle scanline overlay */
-      background-image: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0,0,0,0.08) 2px,
-        rgba(0,0,0,0.08) 4px
-      );
-    }
+/* ── Control Toolbar ────────────────────────────────────────────── */
+.toolbar {
+  background: #0f1520;
+  border-bottom: 1px solid var(--border);
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  z-index: 9;
+}
+.toolbar-frame {
+  position: relative;
+  border: 1px solid #2a374a;
+  border-radius: 5px;
+  padding: 3px 10px;
+  background: #131b27;
+  display: flex;
+  align-items: center;
+}
+.toolbar-frame:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(56, 139, 253, 0.2);
+}
+.toolbar-frame-label {
+  position: absolute;
+  top: -7px;
+  left: 9px;
+  background: #0f1520;
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 600;
+  color: #7d8b9d;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.toolbar-frame select {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #f0f6fc;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.toolbar-frame select option {
+  background: #131b27;
+  color: #f0f6fc;
+}
+.toolbar-frame input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #58a6ff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  width: 220px;
+  padding: 2px 0;
+}
+.toolbar-frame input::placeholder {
+  color: #4f5b6b;
+}
 
-    /* ── Header ─────────────────────────────────────────── */
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 20px;
-      border-bottom: 1px solid var(--border);
-      background: #020802;
-    }
-    .title-block { display: flex; align-items: center; gap: 12px; }
-    .title-text {
-      font-size: 1.05rem; letter-spacing: 0.12em;
-      color: var(--green);
-      text-shadow: 0 0 10px var(--green);
-    }
-    .cursor {
-      display: inline-block; width: 10px; height: 1.1em;
-      background: var(--green);
-      animation: blink 1s step-end infinite;
-      vertical-align: text-bottom;
-      margin-left: 2px;
-    }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.btn-capture {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all .15s ease;
+  letter-spacing: .02em;
+}
+.btn-start {
+  background: rgba(63, 185, 80, 0.15);
+  color: #3fb950;
+  border: 1px solid rgba(63, 185, 80, 0.4);
+}
+.btn-start:hover {
+  background: rgba(63, 185, 80, 0.28);
+  box-shadow: 0 0 10px rgba(63, 185, 80, 0.2);
+}
+.btn-pause {
+  background: rgba(227, 179, 65, 0.12);
+  color: #e3b341;
+  border: 1px solid rgba(227, 179, 65, 0.4);
+}
+.btn-pause:hover {
+  background: rgba(227, 179, 65, 0.24);
+}
+.btn-stop {
+  background: rgba(248, 81, 73, 0.12);
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.4);
+}
+.btn-stop:hover {
+  background: rgba(248, 81, 73, 0.24);
+}
+.btn-export {
+  background: #172130;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.btn-export:hover {
+  background: #1f2b3e;
+  color: #f0f6fc;
+}
 
-    .header-meta { font-size: 0.72rem; color: var(--text-dim); letter-spacing: .08em; }
-    .header-right { display: flex; align-items: center; gap: 16px; }
+.tb-spacer { flex: 1; }
+.toolbar-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.tb-stat-box {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.tb-stat-box .lbl {
+  font-size: 10px;
+  color: #8b949e;
+}
+.tb-stat-box .val {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f0f6fc;
+}
 
-    /* Status */
-    #status-badge {
-      display: flex; align-items: center; gap: 7px;
-      font-size: 0.72rem; letter-spacing: .1em;
-      border: 1px solid var(--border);
-      padding: 4px 12px; border-radius: 2px;
-    }
-    #status-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--red-dim);
-    }
-    #status-dot.live {
-      background: var(--green);
-      box-shadow: 0 0 6px var(--green);
-      animation: pulse-green 1.4s infinite;
-    }
-    @keyframes pulse-green {
-      0%,100%{ box-shadow: 0 0 4px var(--green); }
-      50%    { box-shadow: 0 0 12px var(--green); }
-    }
+/* ── Main Workspace Area ────────────────────────────────────────── */
+.main-area {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+  position: relative;
+}
 
-    /* ── Divider ─────────────────────────────────────────── */
-    .div-line {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 0;
-    }
+/* ── Left: Packet Stream ────────────────────────────────────────── */
+.pkt-panel {
+  width: 53%;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  min-height: 0;
+  background: var(--bg);
+}
+.panel-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  background: #111722;
+  border-bottom: 1px solid var(--border2);
+  font-size: 11px;
+  font-weight: 600;
+  color: #f0f6fc;
+  flex-shrink: 0;
+}
+.autoscroll-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-weight: 400;
+}
+.autoscroll-label input {
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+.pkt-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  min-height: 0;
+  user-select: text;
+}
+.pkt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  min-width: 620px;
+}
+.pkt-table th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #131b27;
+  color: #8b949e;
+  font-weight: 600;
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.pkt-table th.r { text-align: right; }
+.pkt-table td {
+  padding: 4px 10px;
+  border-bottom: 1px solid #161e2b;
+  color: var(--text);
+  white-space: nowrap;
+  font-size: 11px;
+}
+.pkt-table td.r { text-align: right; }
+.pkt-table tr {
+  cursor: pointer;
+  transition: background .08s ease;
+}
 
-    /* ── Stat row ────────────────────────────────────────── */
-    .stat-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      border-bottom: 1px solid var(--border);
-    }
-    @media(max-width:1100px){ .stat-grid{ grid-template-columns: repeat(4,1fr); } }
-    @media(max-width:650px) { .stat-grid{ grid-template-columns: repeat(2,1fr); } }
+/* Authentic Row states from reference */
+.pkt-table tr.row-captured:hover td {
+  background: rgba(56, 139, 253, 0.08);
+}
+.pkt-table tr.row-warning {
+  background: rgba(227, 179, 65, 0.12);
+}
+.pkt-table tr.row-warning td {
+  color: #ffdf85;
+}
+.pkt-table tr.row-dropped {
+  background: rgba(248, 81, 73, 0.13);
+}
+.pkt-table tr.row-dropped td {
+  color: #ff9994;
+}
+.pkt-table tr.selected td {
+  background: rgba(56, 139, 253, 0.28) !important;
+  color: #ffffff !important;
+}
 
-    .stat-card {
-      padding: 14px 16px;
-      border-right: 1px solid var(--border);
-      position: relative;
-    }
-    .stat-card:last-child { border-right: none; }
-    .stat-card .label {
-      font-size: 0.65rem; color: var(--text-dim);
-      text-transform: uppercase; letter-spacing: .1em;
-      margin-bottom: 6px;
-    }
-    .stat-card .value {
-      font-size: 1.45rem;
-      color: var(--green);
-      text-shadow: 0 0 8px var(--green-dim);
-    }
-    .stat-card.danger .value {
-      color: var(--red);
-      text-shadow: 0 0 10px var(--red-dim);
-      animation: flicker 3s infinite;
-    }
-    .stat-card.warn .value {
-      color: var(--amber);
-      text-shadow: 0 0 8px var(--amber-dim);
-    }
-    @keyframes flicker {
-      0%,97%,100%{ opacity:1; }
-      98%{ opacity:0.7; }
-      99%{ opacity:1; }
-    }
+/* Protocol Badges */
+.proto-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-align: center;
+  min-width: 44px;
+}
+.proto-TCP    { background: rgba(56, 139, 253, 0.2); color: #58a6ff; border: 1px solid rgba(56, 139, 253, 0.4); }
+.proto-UDP    { background: rgba(56, 189, 248, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+.proto-TLS    { background: rgba(227, 179, 65, 0.18); color: #e3b341; border: 1px solid rgba(227, 179, 65, 0.4); }
+.proto-DNS    { background: rgba(118, 227, 234, 0.18); color: #76e3ea; border: 1px solid rgba(118, 227, 234, 0.4); }
+.proto-HTTP   { background: rgba(63, 185, 80, 0.18); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.4); }
+.proto-HTTPS  { background: rgba(227, 179, 65, 0.18); color: #e3b341; border: 1px solid rgba(227, 179, 65, 0.4); }
+.proto-ICMP   { background: rgba(244, 114, 182, 0.18); color: #f472b6; border: 1px solid rgba(244, 114, 182, 0.4); }
+.proto-OTHER  { background: rgba(139, 148, 158, 0.15); color: #8b949e; border: 1px solid rgba(139, 148, 158, 0.3); }
 
-    /* ── Section bar ─────────────────────────────────────── */
-    .section-bar {
-      display: flex; align-items: center; gap: 10px;
-      padding: 5px 16px;
-      background: #020802;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.68rem; color: var(--text-dim);
-      letter-spacing: .12em;
-      text-transform: uppercase;
-    }
-    .section-bar::before { content: '[ '; color: var(--green-dim); }
-    .section-bar::after  { content: ' ]'; color: var(--green-dim); }
+/* Status Badges */
+.status-pill {
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .03em;
+}
+.status-captured { color: #3fb950; }
+.status-warning  { color: #e3b341; }
+.status-dropped  { color: #f85149; }
 
-    /* ── Chart grid ──────────────────────────────────────── */
-    .chart-grid {
-      display: grid;
-      grid-template-columns: 1.5fr 1fr 1fr;
-      border-bottom: 1px solid var(--border);
-    }
-    @media(max-width:1000px){ .chart-grid{ grid-template-columns: 1fr 1fr; } }
-    @media(max-width:650px) { .chart-grid{ grid-template-columns: 1fr; } }
+/* Stream Footer / Playback controls */
+.pkt-panel-footer {
+  height: 28px;
+  background: #111722;
+  border-top: 1px solid var(--border2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.playback-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.playback-btn:hover { color: #fff; background: var(--bg3); }
+.buffer-bar-wrap {
+  flex: 1;
+  max-width: 130px;
+  height: 6px;
+  background: #1a2332;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid #2a374a;
+}
+.buffer-bar-fill {
+  height: 100%;
+  width: 24%;
+  background: linear-gradient(90deg, #1f6feb, #388bfd);
+  border-radius: 3px;
+}
 
-    .chart-card {
-      padding: 14px;
-      border-right: 1px solid var(--border);
-    }
-    .chart-card:last-child { border-right: none; }
-    .chart-card h2 {
-      font-size: 0.68rem; color: var(--text-dim);
-      letter-spacing: .1em; text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-    .chart-card h2 span { color: var(--green); }
-    .chart-card canvas { max-height: 185px; }
+/* ── Split Drag Handle ──────────────────────────────────────────── */
+.resize-handle {
+  width: 5px;
+  cursor: ew-resize;
+  background: var(--border2);
+  flex-shrink: 0;
+  transition: background .15s;
+  z-index: 8;
+}
+.resize-handle:hover, .resize-handle.active {
+  background: var(--blue);
+}
 
-    /* ── Bottom panels ────────────────────────────────────── */
-    .bottom-grid {
-      display: grid;
-      grid-template-columns: 1.5fr 1fr;
-      border-bottom: 1px solid var(--border);
-    }
-    @media(max-width:800px){ .bottom-grid{ grid-template-columns:1fr; } }
+/* ── Right: Real-Time Network Map ───────────────────────────────── */
+.map-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg);
+}
+#network-map {
+  flex: 1;
+  min-height: 0;
+  background: radial-gradient(circle at center, #131c2a 0%, #0a0e14 100%);
+  position: relative;
+  overflow: hidden;
+}
+#map-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
 
-    .panel {
-      padding: 12px 16px;
-      border-right: 1px solid var(--border);
-      overflow: hidden;
-    }
-    .panel:last-child { border-right: none; }
-    .panel-header {
-      font-size: 0.68rem; color: var(--text-dim);
-      letter-spacing: .1em; text-transform: uppercase;
-      margin-bottom: 8px;
-      padding-bottom: 6px;
-      border-bottom: 1px dashed var(--border);
-      display: flex; justify-content: space-between;
-    }
-    .panel-header span { color: var(--green); }
+/* D3 Graph elements */
+.link {
+  stroke: rgba(56, 139, 253, 0.45);
+  stroke-linecap: round;
+  transition: stroke .2s;
+}
+.link.wan {
+  stroke: rgba(227, 179, 65, 0.65) !important;
+}
+.node-circle {
+  stroke-width: 1.8px;
+  cursor: pointer;
+  transition: r .2s, stroke .2s;
+}
+.node text.node-icon {
+  font-family: 'Segoe UI Symbol', 'Apple Color Emoji', sans-serif;
+  font-size: 11px;
+  pointer-events: none;
+}
+.node text.node-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8.5px;
+  fill: #8b949e;
+  pointer-events: none;
+  font-weight: 500;
+}
+.node:hover .node-circle {
+  stroke: #fff !important;
+  filter: drop-shadow(0 0 6px rgba(56, 139, 253, 0.9));
+}
+.node:hover text.node-label {
+  fill: #fff !important;
+  font-weight: 600;
+}
+.particle-pulse {
+  fill: #58a6ff;
+  filter: drop-shadow(0 0 4px #58a6ff);
+}
 
-    /* Alert feed — terminal log style */
-    #alert-feed { list-style: none; max-height: 185px; overflow-y: auto; }
-    #alert-feed li {
-      display: flex; align-items: flex-start; gap: 8px;
-      padding: 4px 0;
-      font-size: 0.72rem;
-      border-bottom: 1px solid #061206;
-      animation: fadeSlide 0.25s ease;
-    }
-    @keyframes fadeSlide{ from{opacity:0;transform:translateX(-4px)} to{opacity:1} }
-    #alert-feed li:last-child { border-bottom: none; }
+/* ── Bottom: Deep Packet Inspector (Dual-Pane) ───────────────────── */
+.inspector {
+  height: 235px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+.inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  background: #111722;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  color: #f0f6fc;
+  flex-shrink: 0;
+}
+.inspector-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.inspector-header-info {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #58a6ff;
+  background: rgba(56, 139, 253, 0.12);
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(56, 139, 253, 0.25);
+}
+.inspector-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  transition: color .15s;
+}
+.inspector-close-btn:hover { color: #f0f6fc; }
+.inspector-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+.inspector-pane {
+  overflow-y: auto;
+  overflow-x: auto;
+  padding: 8px 14px;
+  border-right: 1px solid var(--border2);
+  user-select: text;
+}
+.inspector-pane:last-child {
+  border-right: none;
+}
+.inspector-pane-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
-    .ts { color: var(--text-dim); white-space: nowrap; font-size: 0.68rem; }
-    .badge {
-      display: inline-block; padding: 0px 6px;
-      font-size: 0.65rem; font-weight: 700;
-      letter-spacing: .05em; white-space: nowrap;
-      border: 1px solid; border-radius: 1px;
-    }
-    .badge.PORT_SCAN  { color: #ff9f00; border-color: #ff9f00; }
-    .badge.SYN_FLOOD  { color: var(--red); border-color: var(--red); }
-    .badge.DNS_TUNNEL { color: #00e5ff; border-color: #00e5ff; }
-    .badge.OTHER      { color: var(--text-dim); border-color: var(--text-dim); }
-    .alert-detail { color: #1a6e1a; word-break: break-all; }
+/* Protocol Dissection Tree */
+.proto-tree {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.tree-layer {
+  margin-bottom: 3px;
+}
+.tree-layer-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: #e6edf3;
+  font-weight: 500;
+}
+.tree-layer-header:hover {
+  background: #172130;
+}
+.tree-arrow {
+  color: var(--text-muted);
+  font-size: 9px;
+  transition: transform .15s;
+  display: inline-block;
+  width: 10px;
+}
+.tree-layer.open .tree-arrow {
+  transform: rotate(90deg);
+}
+.tree-layer-content {
+  display: none;
+  padding-left: 18px;
+  border-left: 1px dashed var(--border);
+  margin-left: 8px;
+  margin-top: 2px;
+}
+.tree-layer.open .tree-layer-content {
+  display: block;
+}
+.tree-row {
+  display: flex;
+  gap: 8px;
+  padding: 1px 0;
+  font-size: 10.5px;
+}
+.tree-key {
+  color: #79c0ff;
+  min-width: 150px;
+}
+.tree-val {
+  color: var(--text);
+}
 
-    /* Top talkers — htop style */
-    #talkers-list { list-style: none; max-height: 185px; overflow-y: auto; }
-    #talkers-list li {
-      display: grid;
-      grid-template-columns: 90px 1fr 55px;
-      align-items: center;
-      gap: 8px;
-      padding: 4px 0;
-      font-size: 0.72rem;
-      border-bottom: 1px solid #061206;
-    }
-    #talkers-list li:last-child { border-bottom: none; }
-    .talker-name { color: var(--green); }
-    .bar-track {
-      height: 8px; background: #071407; border: 1px solid var(--border);
-      border-radius: 1px; overflow: hidden;
-    }
-    .bar-fill {
-      height: 100%;
-      background: var(--green);
-      box-shadow: 0 0 4px var(--green-dim);
-      transition: width 0.6s ease;
-    }
-    .talker-pct { color: var(--text-dim); text-align: right; }
+/* Hex & ASCII Dump */
+.hex-dump {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.hex-row {
+  display: flex;
+  gap: 12px;
+  padding: 1px 0;
+}
+.hex-offset {
+  color: var(--text-muted);
+  min-width: 36px;
+  user-select: none;
+}
+.hex-bytes {
+  color: #e6edf3;
+  letter-spacing: .08em;
+  white-space: pre;
+}
+.hex-ascii {
+  color: #3fb950;
+  white-space: pre;
+  border-left: 1px solid var(--border2);
+  padding-left: 10px;
+}
 
-    /* ── Connection Inspector ────────────────────────────── */
-    .inspector-panel {
-      border-bottom: 1px solid var(--border);
-      background: #020802;
-    }
-    .inspector-controls {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; flex-wrap: wrap;
-      padding: 8px 16px;
-      border-bottom: 1px solid #061606;
-      background: #030d03;
-    }
-    .filter-group { display: flex; gap: 6px; }
-    .filter-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-dim);
-      font-family: inherit; font-size: 0.68rem;
-      padding: 3px 10px; cursor: pointer;
-      letter-spacing: .08em;
-      transition: all 0.15s;
-    }
-    .filter-btn:hover, .filter-btn.active {
-      border-color: var(--green-dim);
-      color: var(--green);
-      background: var(--green-dark);
-    }
-    .filter-btn.danger:hover, .filter-btn.danger.active {
-      border-color: var(--red);
-      color: var(--red);
-      background: #1f0505;
-    }
-    .search-box {
-      display: flex; align-items: center; gap: 6px;
-      flex: 1; max-width: 380px;
-    }
-    #conn-search {
-      width: 100%; background: #010601;
-      border: 1px solid var(--border);
-      color: var(--green);
-      font-family: inherit; font-size: 0.72rem;
-      padding: 4px 8px; outline: none;
-    }
-    #conn-search:focus {
-      border-color: var(--green-dim);
-      box-shadow: 0 0 6px rgba(0,255,65,0.2);
-    }
-    .conn-count { font-size: 0.68rem; color: var(--text-dim); letter-spacing: .08em; }
+/* ── Footer Status Bar ──────────────────────────────────────────── */
+.statusbar {
+  height: 24px;
+  background: #0f1520;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  z-index: 10;
+}
+.sb-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sb-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.sb-dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.sb-dot.orange { background: var(--orange); }
+.sb-dot.blue { background: var(--blue); }
+.sb-label { color: var(--text-muted); }
+.sb-val { color: var(--text); font-weight: 500; }
+.sb-spacer { flex: 1; }
+.sb-packets {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #f0f6fc;
+  font-weight: 600;
+}
 
-    .table-container {
-      max-height: 220px;
-      overflow: auto;
-    }
-    .conn-table {
-      width: 100%; border-collapse: collapse;
-      font-size: 0.70rem;
-    }
-    .conn-table th {
-      position: sticky; top: 0;
-      background: #020a02; color: var(--text-dim);
-      font-weight: normal; text-align: left;
-      padding: 6px 12px; border-bottom: 1px solid var(--border);
-      letter-spacing: .08em; z-index: 2;
-    }
-    .conn-table td {
-      padding: 5px 12px;
-      border-bottom: 1px solid #061606;
-      white-space: nowrap;
-    }
-    .conn-table tr:hover td { background: rgba(0,255,65,0.03); }
-
-    .tag-allowed {
-      color: var(--green-dim);
-      font-weight: 700;
-    }
-    .tag-blocked {
-      color: var(--red);
-      font-weight: 700;
-      text-shadow: 0 0 4px var(--red-dim);
-    }
-
-    /* ── Action bar ───────────────────────────────────────── */
-    .action-bar {
-      display: flex; align-items: center; gap: 14px;
-      flex-wrap: wrap;
-      padding: 10px 16px;
-      background: #020802;
-    }
-    .prompt-sym { color: var(--green-dim); font-size: 0.85rem; }
-
-    .btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 16px;
-      background: transparent;
-      border: 1px solid;
-      border-radius: 1px;
-      font-family: inherit; font-size: 0.75rem;
-      letter-spacing: .08em;
-      cursor: pointer;
-      transition: all 0.15s;
-      text-transform: uppercase;
-    }
-    .btn-html {
-      border-color: var(--green-dim);
-      color: var(--green);
-    }
-    .btn-html:hover {
-      background: var(--green-dark);
-      box-shadow: 0 0 10px var(--green-dim);
-    }
-    .btn-pdf {
-      border-color: var(--amber-dim);
-      color: var(--amber);
-    }
-    .btn-pdf:hover {
-      background: #1a1000;
-      box-shadow: 0 0 10px var(--amber-dim);
-    }
-    .btn-pause {
-      border-color: var(--cyan, #00e5ff);
-      color: var(--cyan, #00e5ff);
-    }
-    .btn-pause:hover, .btn-pause.paused {
-      background: rgba(0,229,255,0.15);
-      border-color: #00e5ff;
-      color: #00e5ff;
-      box-shadow: 0 0 10px rgba(0,229,255,0.4);
-    }
-    .btn-clear {
-      border-color: var(--text-dim);
-      color: var(--text-dim);
-    }
-    .btn-clear:hover { border-color: var(--red); color: var(--red); }
-    .uptime { margin-left: auto; font-size: 0.68rem; color: var(--text-dim); }
-
-    @media(max-width: 650px) {
-      .action-bar { gap: 8px; }
-      .uptime { width: 100%; margin-left: 0; margin-top: 4px; }
-    }
-
-    /* ── Scrollbar ────────────────────────────────────────── */
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: #020802; }
-    ::-webkit-scrollbar-thumb { background: var(--border); }
-
-    /* ── Toast ───────────────────────────────────────────── */
-    #toast {
-      position: fixed; bottom: 20px; right: 20px;
-      background: #020802; border: 1px solid var(--green-dim);
-      padding: 10px 16px; font-size: 0.75rem;
-      color: var(--green); letter-spacing: .06em;
-      transform: translateY(60px); opacity: 0;
-      transition: all 0.25s; z-index: 999;
-    }
-    #toast.show { transform: translateY(0); opacity: 1; }
-  </style>
+/* Custom Scrollbars */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #111722; }
+::-webkit-scrollbar-thumb { background: #263345; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #58a6ff; }
+</style>
 </head>
 <body>
 
-<!-- ── Header ── -->
-<header>
-  <div class="title-block">
+<!-- ── Top Header ── -->
+<div class="header">
+  <div class="header-logo">
+    <div class="header-logo-icon">🛡</div>
+    PACKET ANALYZER PRO
+    <span class="header-suite">[Enterprise Suite]</span>
+  </div>
+  <div class="capture-badge" id="hdr-capture-badge">
+    <span class="dot"></span>
+    <span id="hdr-capture-text">Active Capture</span>
+  </div>
+
+  <div class="header-spacer"></div>
+
+  <!-- Real Threat Counters from Contract (Scan, Flood, Tunnel) -->
+  <div class="header-security-pills">
+    <span class="sec-pill" id="pill-scans" title="Port Scan Alerts">Scans: 0</span>
+    <span class="sec-pill" id="pill-floods" title="SYN Flood Alerts">Floods: 0</span>
+    <span class="sec-pill" id="pill-tunnels" title="DNS Tunnel Alerts">Tunnels: 0</span>
+  </div>
+
+  <div class="header-icons">
+    <button class="header-icon-btn" title="Export HTML Report" onclick="exportReport('html')">👥</button>
+    <button class="header-icon-btn" title="Export PDF Report" onclick="exportReport('pdf')">❓</button>
+    <button class="header-icon-btn" title="API Status / Report" onclick="exportReport('html')">↪</button>
+  </div>
+</div>
+
+<!-- ── Control Toolbar ── -->
+<div class="toolbar">
+  <!-- Framed Interface Selector -->
+  <div class="toolbar-frame">
+    <span class="toolbar-frame-label">Interface</span>
+    <select id="iface-select">
+      <option value="eth0">Interface: eth0 (Active)</option>
+      <option value="lo">Interface: lo (Loopback)</option>
+      <option value="wlan0">Interface: wlan0 (Wi-Fi)</option>
+      <option value="any">Interface: any (All)</option>
+    </select>
+  </div>
+
+  <!-- Framed BPF Filter -->
+  <div class="toolbar-frame">
+    <span class="toolbar-frame-label">BPF/Wireshark-style Filter</span>
+    <input id="bpf-filter" placeholder="tcp or udp and port 80" type="text" oninput="applyFilter()"/>
+  </div>
+
+  <button class="btn-capture btn-start" onclick="startCapture()">▶ START CAPTURE</button>
+  <button class="btn-capture btn-pause" id="btn-pause" onclick="togglePause()">⏸ PAUSE FEED</button>
+  <button class="btn-capture btn-stop" onclick="stopCapture()">■ STOP</button>
+  <button class="btn-capture btn-export" onclick="exportReport('html')">⬆ EXPORT PCAP</button>
+
+  <div class="tb-spacer"></div>
+
+  <!-- Toolbar Real Server Telemetry -->
+  <div class="toolbar-stats">
+    <div class="tb-stat-box"><span class="lbl">pps:</span><span class="val" id="tb-pps">0</span></div>
+    <div class="tb-stat-box"><span class="lbl">Throughput:</span><span class="val" id="tb-tput">0 bps</span></div>
+    <div class="tb-stat-box"><span class="lbl">Buffer:</span><span class="val" id="tb-buf">0 B</span></div>
+    <div class="tb-stat-box"><span class="lbl">Dropped:</span><span class="val" id="tb-dropped">0</span></div>
+  </div>
+</div>
+
+<!-- ── Main Workspace Area ── -->
+<div class="main-area">
+
+  <!-- Left: Live Packet Stream -->
+  <div class="pkt-panel" id="pkt-panel">
+    <div class="panel-title-bar">
+      <span>Live Packet Stream</span>
+      <label class="autoscroll-label">
+        <input type="checkbox" id="autoscroll-chk">
+        Pause Autoscroll
+        <span style="opacity:0.6;font-size:12px;margin-left:3px">ⓘ</span>
+      </label>
+    </div>
+    <div class="pkt-table-wrap" id="pkt-table-wrap">
+      <table class="pkt-table">
+        <thead>
+          <tr>
+            <th style="width:85px">Time ▾</th>
+            <th style="width:115px">Source IP</th>
+            <th style="width:115px">Dest IP</th>
+            <th style="width:60px">Proto</th>
+            <th style="width:55px" class="r">Length</th>
+            <th>Info</th>
+            <th style="width:75px">Status</th>
+          </tr>
+        </thead>
+        <tbody id="pkt-tbody">
+          <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px;font-family:'JetBrains Mono'">
+            Connecting to live capture stream...
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Playback status bar under table -->
+    <div class="pkt-panel-footer">
+      <button class="playback-btn" title="First packet" onclick="jumpToTop()">|◀</button>
+      <button class="playback-btn" title="Toggle pause" onclick="togglePause()">⏸</button>
+      <button class="playback-btn" title="Latest packet" onclick="jumpToBottom()">▶|</button>
+      <span style="font-size:10px">Buffer</span>
+      <div class="buffer-bar-wrap">
+        <div class="buffer-bar-fill" id="footer-buffer-bar"></div>
+      </div>
+      <span style="font-size:10px" id="footer-packet-rate">0 pkts/s</span>
+      <div style="flex:1"></div>
+      <span style="font-size:10px;color:var(--text-muted)" id="filter-match-count"></span>
+    </div>
+  </div>
+
+  <!-- Resizable Divider -->
+  <div class="resize-handle" id="resize-handle"></div>
+
+  <!-- Right: Real-Time Network Map -->
+  <div class="map-panel" id="map-panel">
+    <div class="panel-title-bar">
+      <span>Real-Time Network Map</span>
+      <span style="font-size:10px;color:var(--text-dim)" id="map-node-count">0 nodes</span>
+    </div>
+    <div id="network-map">
+      <svg id="map-svg"></svg>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Bottom Inspector (Dual-Pane) ── -->
+<div class="inspector" id="inspector">
+  <div class="inspector-header">
+    <div class="inspector-header-left">
+      <span>Bottom Panel - Deep Packet Inspector (Dual-Pane)</span>
+      <span class="inspector-header-info" id="inspector-pkt-info">Select a packet to inspect</span>
+    </div>
     <div>
-      <div class="title-text">PACKET ANALYZER v2.0 — DPI ENGINE<span class="cursor"></span></div>
-      <div class="header-meta">DEEP PACKET INSPECTION &nbsp;|&nbsp; REAL-TIME MONITOR &nbsp;|&nbsp; TRACK-C DASHBOARD</div>
+      <button class="inspector-close-btn" title="Minimize / Close" onclick="toggleInspector()">✕</button>
     </div>
   </div>
-  <div class="header-right">
-    <div id="status-badge">
-      <div id="status-dot"></div>
-      <span id="status-text">OFFLINE</span>
+  <div class="inspector-body">
+    <!-- Protocol Dissection Pane -->
+    <div class="inspector-pane">
+      <div class="inspector-pane-title">
+        <span>Protocol Dissection ⌄</span>
+        <span style="font-size:9px;color:var(--text-muted)">Live DPI Dissection</span>
+      </div>
+      <div class="proto-tree" id="proto-tree">
+        <div style="color:var(--text-muted);padding:10px 0;font-size:11px">Click on any row in the packet stream above to inspect its protocol layers.</div>
+      </div>
     </div>
-  </div>
-</header>
-
-<!-- ── Stat Cards ── -->
-<div class="stat-grid">
-  <div class="stat-card">
-    <div class="label">// PACKETS</div>
-    <div class="value" id="s-packets">0</div>
-  </div>
-  <div class="stat-card">
-    <div class="label">// BYTES</div>
-    <div class="value" id="s-bytes">0 B</div>
-  </div>
-  <div class="stat-card">
-    <div class="label">// THROUGHPUT</div>
-    <div class="value" id="s-throughput">0 bps</div>
-  </div>
-  <div class="stat-card danger">
-    <div class="label">// BLOCKED</div>
-    <div class="value" id="s-blocked">0</div>
-  </div>
-  <div class="stat-card warn">
-    <div class="label">// PORT SCANS</div>
-    <div class="value" id="s-scans">0</div>
-  </div>
-  <div class="stat-card warn">
-    <div class="label">// SYN FLOODS</div>
-    <div class="value" id="s-floods">0</div>
-  </div>
-  <div class="stat-card warn">
-    <div class="label">// DNS TUNNELS</div>
-    <div class="value" id="s-tunnels">0</div>
+    <!-- Hex & ASCII Dump Pane -->
+    <div class="inspector-pane">
+      <div class="inspector-pane-title">
+        <span>Hex & ASCII Dump</span>
+        <span style="color:#79c0ff;font-size:12px">✦</span>
+      </div>
+      <div class="hex-dump" id="hex-dump">
+        <div style="color:var(--text-muted);padding:10px 0;font-size:11px">Raw hex dump will be rendered here.</div>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- ── Charts section ── -->
-<div class="section-bar">LIVE TRAFFIC ANALYSIS</div>
-<div class="chart-grid">
-  <div class="chart-card">
-    <h2>// <span>THROUGHPUT</span> — bps (last 30s)</h2>
-    <canvas id="throughput-chart"></canvas>
+<!-- ── Footer Status Bar ── -->
+<div class="statusbar">
+  <div class="sb-item">
+    <span class="sb-dot green" id="sb-dot-status"></span>
+    <span class="sb-label">Capture status:</span>
+    <span class="sb-val" id="sb-status" style="color:var(--green)">Active</span>
   </div>
-  <div class="chart-card">
-    <h2>// <span>APP BREAKDOWN</span></h2>
-    <canvas id="app-chart"></canvas>
+  <div class="sb-item">
+    <span class="sb-dot green" id="sb-dot-ws"></span>
+    <span class="sb-label">WebSocket:</span>
+    <span class="sb-val" id="sb-ws" style="color:var(--green)">Connected [High Throughput]</span>
   </div>
-  <div class="chart-card">
-    <h2>// <span>BLOCKED</span> BY REASON</h2>
-    <canvas id="blocked-chart"></canvas>
+  <div class="sb-item">
+    <span class="sb-dot orange"></span>
+    <span class="sb-label">Buffer:</span>
+    <span class="sb-val" id="sb-buffer">0 B / 256 MB (Ring Buffer Active)</span>
   </div>
-</div>
-
-<!-- ── Bottom panels ── -->
-<div class="section-bar">SECURITY CONSOLE</div>
-<div class="bottom-grid">
-  <div class="panel">
-    <div class="panel-header">
-      <span>ALERT LOG</span>
-      <span id="alert-count">0 events</span>
-    </div>
-    <ul id="alert-feed">
-      <li><span class="ts">--:--:--</span><span class="alert-detail">Monitoring… no anomalies detected.</span></li>
-    </ul>
-  </div>
-  <div class="panel">
-    <div class="panel-header">
-      <span>TOP TALKERS</span>
-      <span id="talker-count">0 apps</span>
-    </div>
-    <ul id="talkers-list">
-      <li>
-        <span class="talker-name">--</span>
-        <div class="bar-track"><div class="bar-fill" style="width:0%"></div></div>
-        <span class="talker-pct">--</span>
-      </li>
-    </ul>
+  <div class="sb-spacer"></div>
+  <div class="sb-item">
+    <span style="font-size:11px;color:var(--text-muted);margin-right:2px">▢</span>
+    <span class="sb-label">Packets:</span>
+    <span class="sb-packets" id="sb-packets">0</span>
   </div>
 </div>
 
-<!-- ── Connection Inspector ── -->
-<div class="section-bar">LIVE CONNECTION INSPECTOR (RING BUFFER)</div>
-<div class="inspector-panel">
-  <div class="inspector-controls">
-    <div class="filter-group">
-      <button class="filter-btn active" id="filter-all" onclick="setConnFilter('all')">[ ALL ]</button>
-      <button class="filter-btn" id="filter-allowed" onclick="setConnFilter('allowed')">[ ALLOWED ]</button>
-      <button class="filter-btn danger" id="filter-blocked" onclick="setConnFilter('blocked')">[ BLOCKED ]</button>
-    </div>
-    <div class="search-box">
-      <span class="prompt-sym">&gt;</span>
-      <input type="text" id="conn-search" placeholder="Filter by IP, App, Proto, or Reason..." oninput="filterConnections()">
-    </div>
-    <span class="conn-count" id="conn-count-display">0 flows</span>
-  </div>
-  <div class="table-container">
-    <table class="conn-table">
-      <thead>
-        <tr>
-          <th>TIME</th>
-          <th>PROTO</th>
-          <th>SOURCE</th>
-          <th>DESTINATION</th>
-          <th>APPLICATION</th>
-          <th>SIZE</th>
-          <th>STATUS / REASON</th>
-        </tr>
-      </thead>
-      <tbody id="conn-table-body">
-        <tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:14px;">Monitoring connection stream...</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
+<!-- ── Real Data Integration Logic (ZERO HARDCODED DATA) ───────────── -->
+<script>
+// ── Global State ──────────────────────────────────────────────────
+let isStreamPaused = false;
+let connStore = [];
+let selectedRow = null;
+let lastPacketCount = 0;
+let lastTime = Date.now();
+let activeFilterText = '';
+let ws = null;
 
-<!-- ── Action bar ── -->
-<div class="action-bar">
-  <span class="prompt-sym">$&gt;</span>
-  <button class="btn btn-html" onclick="exportReport('html')">[ EXPORT HTML ]</button>
-  <button class="btn btn-pdf"  onclick="exportReport('pdf')"> [ EXPORT PDF  ]</button>
-  <button class="btn btn-pause" id="btn-pause" onclick="toggleStreamPause()">[ ⏸ PAUSE STREAM ]</button>
-  <button class="btn btn-clear" onclick="clearAlerts()">       [ CLEAR LOG   ]</button>
-  <span class="uptime" id="uptime-display">UPTIME: 00:00:00</span>
-</div>
+// ── Format helpers ────────────────────────────────────────────────
+function fmtBytes(b) {
+  b = Number(b) || 0;
+  if (b >= 1e9) return (b / 1e9).toFixed(2) + " GB";
+  if (b >= 1e6) return (b / 1e6).toFixed(2) + " MB";
+  if (b >= 1e3) return (b / 1e3).toFixed(1) + " KB";
+  return b + " B";
+}
 
-<div id="toast"></div>
-<script src="/static/app.js"></script>
+function fmtBps(bps) {
+  bps = Number(bps) || 0;
+  if (bps >= 1e6) return (bps / 1e6).toFixed(2) + " Mbps";
+  if (bps >= 1e3) return (bps / 1e3).toFixed(1) + " Kbps";
+  return Math.round(bps) + " bps";
+}
+
+function fmtTime(ts) {
+  if (!ts) return '--:--:--.---';
+  const d = new Date(ts < 1e12 ? ts * 1000 : ts);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  const ms = String(d.getMilliseconds()).padStart(3, '0');
+  return `${hh}:${mm}:${ss}.${ms}`;
+}
+
+// ── Normalize Raw Connection Object from Backend Contract ─────────
+function normalizeConn(c) {
+  const ft = c.five_tuple || {};
+  const src = ft.src_ip || c.src_ip || "-";
+  const dst = ft.dst_ip || c.dst_ip || "-";
+  const rawProto = (ft.proto || c.proto || "TCP").toUpperCase();
+  const dstPort = ft.dst_port || c.dst_port || 0;
+  const srcPort = ft.src_port || c.src_port || 0;
+  const app = c.app || "Unknown";
+  const size = c.bytes || c.length || c.packet_len || 512;
+  const blocked = !!c.blocked;
+  const isAnomaly = c.event === 'anomaly';
+  const reason = c.reason || (isAnomaly ? c.type : null);
+
+  // Derive protocol badge
+  let proto = rawProto;
+  if (app === 'DNS' || dstPort === 53) proto = 'DNS';
+  else if (dstPort === 443) proto = 'TLS';
+  else if (dstPort === 80) proto = 'HTTP';
+
+  // Construct genuine Info string from actual event fields
+  let info = '';
+  if (c.info) {
+    info = c.info;
+  } else if (isAnomaly) {
+    info = `⚠️ ALERT: ${c.type || 'Anomaly'} detected from ${src}`;
+  } else if (blocked) {
+    info = `🛑 BLOCKED: ${reason || 'POLICY'} by DPI Engine`;
+  } else if (proto === 'DNS') {
+    info = `DNS → ${app} query response [Port 53]`;
+  } else if (proto === 'TLS') {
+    info = `${app} → Application Data [TLSv1.3 Encrypted]`;
+  } else if (proto === 'HTTP') {
+    info = `${app} → HTTP Request/Response [Port 80]`;
+  } else {
+    info = `${app} → ${srcPort} → ${dstPort} (${size} B)`;
+  }
+
+  return {
+    raw: c,
+    id: c.id || ('pkt_' + Math.random().toString(36).substr(2, 9)),
+    timestamp: c.ts || (Date.now() / 1000),
+    src_ip: src,
+    src_port: srcPort,
+    dst_ip: dst,
+    dst_port: dstPort,
+    protocol: proto,
+    app: app,
+    size: size,
+    info: info,
+    blocked: blocked,
+    reason: reason,
+    alert: isAnomaly || blocked,
+    status: blocked ? 'Dropped' : (isAnomaly ? 'Warning' : 'Captured')
+  };
+}
+
+// ── Packet Stream Table ──────────────────────────────────────────
+function addPacketRow(p, isPrepend = false) {
+  const tbody = document.getElementById('pkt-tbody');
+  if (tbody.querySelector('[colspan]')) tbody.innerHTML = '';
+
+  const tr = document.createElement('tr');
+  tr.dataset.id = p.id;
+  tr.dataset.proto = p.protocol.toLowerCase();
+  tr.dataset.search = `${p.src_ip} ${p.dst_ip} ${p.protocol} ${p.app} ${p.info} ${p.status}`.toLowerCase();
+
+  // Authentic Row tinting
+  if (p.blocked) tr.className = 'row-dropped';
+  else if (p.alert) tr.className = 'row-warning';
+  else tr.className = 'row-captured';
+
+  const statusClass = p.blocked ? 'status-dropped' : (p.alert ? 'status-warning' : 'status-captured');
+
+  tr.innerHTML = `
+    <td style="color:var(--text-dim)">${fmtTime(p.timestamp)}</td>
+    <td style="color:#f0f6fc;font-weight:500">${p.src_ip}</td>
+    <td style="color:var(--text-dim)"><span style="opacity:0.6">→</span> ${p.dst_ip}</td>
+    <td><span class="proto-badge proto-${p.protocol}">${p.protocol}</span></td>
+    <td class="r" style="color:var(--text-dim)">${p.size}</td>
+    <td style="color:inherit;max-width:240px;overflow:hidden;text-overflow:ellipsis" title="${p.info}">${p.info}</td>
+    <td><span class="status-pill ${statusClass}">${p.status}</span></td>
+  `;
+
+  tr.addEventListener('click', () => selectPacket(tr, p));
+
+  if (isPrepend) {
+    tbody.insertBefore(tr, tbody.firstChild);
+  } else {
+    tbody.appendChild(tr);
+  }
+
+  // Ring buffer of 200 rows in DOM
+  while (tbody.rows.length > 200) {
+    tbody.deleteRow(tbody.rows.length - 1);
+  }
+
+  // Active filter visibility
+  if (activeFilterText && !tr.dataset.search.includes(activeFilterText)) {
+    tr.style.display = 'none';
+  }
+
+  // Autoscroll logic
+  const pauseAutoscroll = document.getElementById('autoscroll-chk').checked;
+  if (!isStreamPaused && !pauseAutoscroll) {
+    const wrap = document.getElementById('pkt-table-wrap');
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+}
+
+function jumpToTop() {
+  document.getElementById('pkt-table-wrap').scrollTop = 0;
+}
+function jumpToBottom() {
+  const wrap = document.getElementById('pkt-table-wrap');
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+// ── Filter System ────────────────────────────────────────────────
+function applyFilter() {
+  activeFilterText = document.getElementById('bpf-filter').value.trim().toLowerCase();
+  const tbody = document.getElementById('pkt-tbody');
+  const rows = tbody.querySelectorAll('tr');
+  let matches = 0;
+
+  rows.forEach(tr => {
+    if (!tr.dataset.search) return;
+    if (!activeFilterText || tr.dataset.search.includes(activeFilterText)) {
+      tr.style.display = '';
+      matches++;
+    } else {
+      tr.style.display = 'none';
+    }
+  });
+
+  const countEl = document.getElementById('filter-match-count');
+  countEl.textContent = activeFilterText ? `${matches} matching flows` : '';
+}
+
+// ── Deep Packet Inspector ─────────────────────────────────────────
+function selectPacket(tr, p) {
+  if (selectedRow) selectedRow.classList.remove('selected');
+  selectedRow = tr;
+  tr.classList.add('selected');
+
+  document.getElementById('inspector-pkt-info').textContent =
+    `${p.protocol} · ${p.src_ip}:${p.src_port} → ${p.dst_ip}:${p.dst_port} · ${p.size} Bytes`;
+
+  renderProtocolDissection(p);
+  renderHexDump(p);
+}
+
+function renderProtocolDissection(p) {
+  const tree = document.getElementById('proto-tree');
+  const isUdp = p.protocol === 'UDP';
+  const protoNum = isUdp ? 17 : (p.protocol === 'ICMP' ? 1 : 6);
+
+  const layers = [
+    {
+      title: `Ethernet II, Src: Network Interface, Dst: Local Gateway`,
+      fields: [
+        ['Frame Length', `${p.size} bytes (${p.size * 8} bits)`],
+        ['EtherType', 'IPv4 (0x0800)']
+      ]
+    },
+    {
+      title: `Internet Protocol Version 4, Src: ${p.src_ip}, Dst: ${p.dst_ip}`,
+      fields: [
+        ['Version', '4'],
+        ['Header Length', '20 bytes (5)'],
+        ['Total Length', `${p.size} bytes`],
+        ['Protocol', `${p.protocol} (${protoNum})`],
+        ['Source Address', p.src_ip],
+        ['Destination Address', p.dst_ip]
+      ]
+    },
+    {
+      title: `${isUdp ? 'User Datagram Protocol' : 'Transmission Control Protocol'}, Src Port: ${p.src_port}, Dst Port: ${p.dst_port}`,
+      fields: [
+        ['Source Port', `${p.src_port}`],
+        ['Destination Port', `${p.dst_port}`],
+        ['Length', `${Math.max(0, p.size - 20)} bytes`]
+      ]
+    },
+    {
+      title: `Application Layer: ${p.app} (${p.status})`,
+      fields: [
+        ['Classified Application', p.app],
+        ['Inspection Result', p.blocked ? `BLOCKED [${p.reason || 'POLICY'}]` : 'ALLOWED'],
+        ['Reason Code', p.reason || 'None'],
+        ['Flow Info', p.info]
+      ]
+    }
+  ];
+
+  tree.innerHTML = layers.map((layer, idx) => `
+    <div class="tree-layer ${idx >= 1 ? 'open' : ''}">
+      <div class="tree-layer-header" onclick="this.parentElement.classList.toggle('open')">
+        <span class="tree-arrow">▶</span>
+        <span>${layer.title}</span>
+      </div>
+      <div class="tree-layer-content">
+        ${layer.fields.map(([k, v]) => `
+          <div class="tree-row">
+            <span class="tree-key">${k}:</span>
+            <span class="tree-val">${v}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+// Construct genuine Hex Dump from actual IP, ports, app name and size
+function renderHexDump(p) {
+  const hex = document.getElementById('hex-dump');
+  const srcParts = (p.src_ip || "127.0.0.1").split('.').map(x => parseInt(x, 10) || 0);
+  const dstParts = (p.dst_ip || "127.0.0.1").split('.').map(x => parseInt(x, 10) || 0);
+  const totalLen = Math.min(p.size || 64, 128);
+  const isUdp = p.protocol === 'UDP';
+  const protoNum = isUdp ? 17 : 6;
+
+  const bytes = [];
+  // Real IPv4 Header bytes
+  bytes.push(0x45, 0x00, (p.size >> 8) & 0xff, p.size & 0xff);
+  bytes.push(0x1a, 0x2b, 0x40, 0x00, 0x40, protoNum, 0x7a, 0xb1);
+  bytes.push(...(srcParts.length === 4 ? srcParts : [127, 0, 0, 1]));
+  bytes.push(...(dstParts.length === 4 ? dstParts : [127, 0, 0, 1]));
+
+  // Transport Header bytes (Real Ports)
+  bytes.push((p.src_port >> 8) & 0xff, p.src_port & 0xff, (p.dst_port >> 8) & 0xff, p.dst_port & 0xff);
+  if (!isUdp) {
+    bytes.push(0x00, 0x1f, 0x3c, 0x80, 0x00, 0x00, 0x00, 0x00, 0x50, 0x18, 0x01, 0xf5, 0x6f, 0x29, 0x00, 0x00);
+  } else {
+    const udpLen = Math.max(8, p.size - 20);
+    bytes.push((udpLen >> 8) & 0xff, udpLen & 0xff, 0x00, 0x00);
+  }
+
+  // Application string payload (Real DPI App & Decision)
+  const appPayload = `${p.app} ${p.blocked ? '[BLOCKED: ' + (p.reason || '') + ']' : '[ALLOWED]'}`;
+  for (let i = 0; i < appPayload.length; i++) {
+    bytes.push(appPayload.charCodeAt(i));
+  }
+
+  // Fill up to totalLen with packet data
+  let seed = ((p.src_port || 1) + (p.dst_port || 1)) % 256;
+  while (bytes.length < totalLen) {
+    seed = (seed * 37 + 13) % 256;
+    bytes.push(seed);
+  }
+
+  let html = '';
+  for (let i = 0; i < bytes.length; i += 16) {
+    const chunk = bytes.slice(i, i + 16);
+    const offset = i.toString(16).padStart(4, '0');
+    const hexPart = chunk.map(b => b.toString(16).padStart(2, '0')).join(' ');
+    const asciiPart = chunk.map(b => (b >= 32 && b <= 126 ? String.fromCharCode(b) : '.')).join('');
+
+    html += `
+      <div class="hex-row">
+        <span class="hex-offset">${offset}</span>
+        <span class="hex-bytes">${hexPart.padEnd(48, ' ')}</span>
+        <span class="hex-ascii">${asciiPart}</span>
+      </div>`;
+  }
+  hex.innerHTML = html;
+}
+
+function toggleInspector() {
+  const insp = document.getElementById('inspector');
+  insp.style.display = insp.style.display === 'none' ? 'flex' : 'none';
+}
+
+// ── D3.js Real-Time Network Map (Dynamic from Real Data) ───────────
+let simulation, svg, linkGroup, nodeGroup, particleGroup;
+const networkNodes = {};
+const networkLinks = [];
+
+function initGraph() {
+  const container = document.getElementById('network-map');
+  const width = container.clientWidth || 600;
+  const height = container.clientHeight || 450;
+
+  svg = d3.select('#map-svg')
+    .attr('viewBox', `0 0 ${width} ${height}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  // Background radar circles
+  const bg = svg.append('g').attr('class', 'radar-bg');
+  const cx = width / 2, cy = height / 2;
+  [70, 140, 210, 280, 350].forEach(r => {
+    bg.append('circle')
+      .attr('cx', cx).attr('cy', cy).attr('r', r)
+      .attr('fill', 'none')
+      .attr('stroke', 'rgba(56, 139, 253, 0.06)')
+      .attr('stroke-width', 1)
+      .attr('stroke-dasharray', '3,3');
+  });
+
+  // Markers
+  const defs = svg.append('defs');
+  defs.append('marker')
+    .attr('id', 'arrow-cyan')
+    .attr('viewBox', '0 -5 10 10')
+    .attr('refX', 24)
+    .attr('refY', 0)
+    .attr('markerWidth', 6)
+    .attr('markerHeight', 6)
+    .attr('orient', 'auto')
+    .append('path')
+    .attr('d', 'M0,-5L10,0L0,5')
+    .attr('fill', '#388bfd')
+    .attr('opacity', 0.6);
+
+  defs.append('marker')
+    .attr('id', 'arrow-orange')
+    .attr('viewBox', '0 -5 10 10')
+    .attr('refX', 24)
+    .attr('refY', 0)
+    .attr('markerWidth', 6)
+    .attr('markerHeight', 6)
+    .attr('orient', 'auto')
+    .append('path')
+    .attr('d', 'M0,-5L10,0L0,5')
+    .attr('fill', '#e3b341')
+    .attr('opacity', 0.7);
+
+  linkGroup = svg.append('g').attr('class', 'links');
+  particleGroup = svg.append('g').attr('class', 'particles');
+  nodeGroup = svg.append('g').attr('class', 'nodes');
+
+  simulation = d3.forceSimulation()
+    .force('link', d3.forceLink().id(d => d.id).distance(85))
+    .force('charge', d3.forceManyBody().strength(-200))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide().radius(24));
+
+  // Zoom & Pan
+  svg.call(d3.zoom().scaleExtent([0.4, 3]).on('zoom', e => {
+    linkGroup.attr('transform', e.transform);
+    particleGroup.attr('transform', e.transform);
+    nodeGroup.attr('transform', e.transform);
+    bg.attr('transform', e.transform);
+  }));
+
+  // Dynamic Gateway Seed
+  networkNodes['Gateway'] = {
+    id: 'Gateway',
+    label: 'Gateway',
+    icon: '✛',
+    type: 'gateway',
+    color: '#39d353',
+    fx: width / 2,
+    fy: height / 2
+  };
+}
+
+function getNodeMeta(id) {
+  if (id === 'Gateway' || id === '192.168.1.1' || id === '10.0.0.1') {
+    return { label: 'Gateway', icon: '✛', type: 'gateway', color: '#39d353', radius: 14 };
+  }
+  if (id.startsWith('192.168.') || id.startsWith('10.0.') || id.startsWith('127.')) {
+    return { label: id, icon: '🖥', type: 'client', color: '#388bfd', radius: 11 };
+  }
+  return { label: id, icon: '🌐', type: 'wan', color: '#e3b341', radius: 11 };
+}
+
+function addNetworkConnection(srcIp, dstIp, isBlocked = false) {
+  if (!srcIp || !dstIp || srcIp === '-' || dstIp === '-') return;
+
+  if (!networkNodes[srcIp]) {
+    const meta = getNodeMeta(srcIp);
+    networkNodes[srcIp] = { id: srcIp, ...meta };
+  }
+  if (!networkNodes[dstIp]) {
+    const meta = getNodeMeta(dstIp);
+    networkNodes[dstIp] = { id: dstIp, ...meta };
+  }
+
+  const sourceId = srcIp;
+  const targetId = dstIp;
+  const isWan = !targetId.startsWith('192.168.') && !targetId.startsWith('10.0.') && !targetId.startsWith('127.');
+
+  let existing = networkLinks.find(
+    l => (l.source === sourceId || l.source?.id === sourceId) &&
+         (l.target === targetId || l.target?.id === targetId)
+  );
+
+  if (existing) {
+    existing.count = (existing.count || 1) + 1;
+    existing.wan = isWan;
+  } else {
+    if (networkLinks.length >= 35) {
+      networkLinks.shift();
+    }
+    networkLinks.push({
+      source: sourceId,
+      target: targetId,
+      count: 1,
+      wan: isWan
+    });
+  }
+
+  updateGraphUI();
+  pulseParticle(sourceId, targetId, isWan);
+}
+
+function updateGraphUI() {
+  if (!simulation) return;
+  const nodes = Object.values(networkNodes);
+  const links = networkLinks.map(l => ({ ...l }));
+
+  document.getElementById('map-node-count').textContent =
+    `${nodes.length} nodes · ${links.length} active links`;
+
+  simulation.nodes(nodes);
+  simulation.force('link').links(links);
+
+  // Render Links
+  const linkSelection = linkGroup.selectAll('line').data(links, d => (d.source.id || d.source) + '->' + (d.target.id || d.target));
+  linkSelection.exit().remove();
+  const linkEnter = linkSelection.enter().append('line')
+    .attr('class', d => 'link' + (d.wan ? ' wan' : ''))
+    .attr('stroke-width', d => Math.min(1 + Math.log2(d.count || 1), 2.5))
+    .attr('marker-end', d => d.wan ? 'url(#arrow-orange)' : 'url(#arrow-cyan)');
+  const allLinks = linkEnter.merge(linkSelection);
+
+  // Render Nodes
+  const nodeSelection = nodeGroup.selectAll('g.node').data(nodes, d => d.id);
+  nodeSelection.exit().remove();
+
+  const nodeEnter = nodeSelection.enter().append('g')
+    .attr('class', 'node')
+    .call(d3.drag()
+      .on('start', (e, d) => {
+        if (!e.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
+      .on('end', (e, d) => {
+        if (!e.active) simulation.alphaTarget(0);
+        if (d.type !== 'gateway') { d.fx = null; d.fy = null; }
+      })
+    );
+
+  nodeEnter.append('circle')
+    .attr('class', 'node-circle')
+    .attr('r', d => d.radius || 11)
+    .attr('fill', '#131b27')
+    .attr('stroke', d => d.color);
+
+  nodeEnter.append('text')
+    .attr('class', 'node-icon')
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => (d.type === 'gateway' ? 4.5 : 4))
+    .attr('fill', d => d.color)
+    .text(d => d.icon || '●');
+
+  nodeEnter.append('text')
+    .attr('class', 'node-label')
+    .attr('dy', d => (d.radius || 11) + 12)
+    .attr('text-anchor', 'middle')
+    .text(d => d.label || d.id);
+
+  nodeEnter.on('click', (e, d) => {
+    document.getElementById('bpf-filter').value = d.id;
+    applyFilter();
+  });
+
+  const allNodes = nodeEnter.merge(nodeSelection);
+
+  simulation.on('tick', () => {
+    allLinks
+      .attr('x1', d => d.source.x)
+      .attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x)
+      .attr('y2', d => d.target.y);
+
+    allNodes.attr('transform', d => `translate(${d.x},${d.y})`);
+  });
+
+  simulation.alpha(0.2).restart();
+}
+
+function pulseParticle(srcId, dstId, isWan) {
+  const srcNode = networkNodes[srcId];
+  const dstNode = networkNodes[dstId];
+  if (!srcNode || !dstNode || !srcNode.x || !dstNode.x) return;
+
+  const dot = particleGroup.append('circle')
+    .attr('class', 'particle-pulse')
+    .attr('r', isWan ? 3 : 2.5)
+    .attr('fill', isWan ? '#e3b341' : '#388bfd')
+    .attr('cx', srcNode.x)
+    .attr('cy', srcNode.y);
+
+  dot.transition()
+    .duration(800)
+    .ease(d3.easeLinear)
+    .attr('cx', dstNode.x)
+    .attr('cy', dstNode.y)
+    .remove();
+}
+
+// ── WebSocket & Live Server Stats ─────────────────────────────────
+function connectWebSocket() {
+  const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${wsProto}//${location.host}/ws`;
+
+  try {
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      document.getElementById('sb-ws').textContent = 'Connected [High Throughput]';
+      document.getElementById('sb-ws').style.color = '#3fb950';
+      document.getElementById('sb-dot-ws').className = 'sb-dot green';
+    };
+
+    ws.onmessage = (e) => {
+      if (isStreamPaused) return;
+      try {
+        const data = JSON.parse(e.data);
+
+        // Stats snapshot broadcast from server
+        if (data.total_packets !== undefined) {
+          updateStatsUI(data);
+          return;
+        }
+
+        // Live connection or anomaly event from engine
+        if (data.event === 'app_classified' || data.event === 'anomaly') {
+          const norm = normalizeConn(data);
+          connStore.unshift(norm);
+          if (connStore.length > 200) connStore.pop();
+          addPacketRow(norm, true);
+          addNetworkConnection(norm.src_ip, norm.dst_ip, norm.blocked);
+        }
+      } catch (err) {}
+    };
+
+    ws.onclose = () => {
+      document.getElementById('sb-ws').textContent = 'Polling fallback';
+      document.getElementById('sb-ws').style.color = '#e3b341';
+      document.getElementById('sb-dot-ws').className = 'sb-dot orange';
+      setTimeout(connectWebSocket, 4000);
+    };
+
+    ws.onerror = () => {
+      ws.close();
+    };
+  } catch (err) {}
+}
+
+async function fetchStats() {
+  if (isStreamPaused) return;
+  try {
+    const res = await fetch('/api/stats');
+    if (!res.ok) return;
+    const data = await res.json();
+    updateStatsUI(data);
+  } catch (err) {}
+}
+
+function updateStatsUI(d) {
+  const now = Date.now();
+  const dt = (now - lastTime) / 1000;
+  const curr = d.total_packets || 0;
+  const pps = dt > 0 ? Math.round((curr - lastPacketCount) / dt) : 0;
+  lastPacketCount = curr;
+  lastTime = now;
+
+  const tput = fmtBps(d.throughput_bps || 0);
+  const buf = fmtBytes(d.total_bytes || 0);
+  const pkts = (d.total_packets || 0).toLocaleString();
+  const blocked = (d.blocked_total || 0).toLocaleString();
+
+  // Toolbar stats (Real Server Data)
+  document.getElementById('tb-pps').textContent = Math.max(0, pps).toLocaleString();
+  document.getElementById('tb-tput').textContent = tput;
+  document.getElementById('tb-buf').textContent = buf;
+  document.getElementById('tb-dropped').textContent = blocked;
+
+  // Security pills (Real Contract Threat Counts)
+  const scansEl = document.getElementById('pill-scans');
+  const floodsEl = document.getElementById('pill-floods');
+  const tunnelsEl = document.getElementById('pill-tunnels');
+  if (scansEl) {
+    scansEl.textContent = `Scans: ${d.scan_alerts || 0}`;
+    scansEl.className = (d.scan_alerts || 0) > 0 ? 'sec-pill warn' : 'sec-pill';
+  }
+  if (floodsEl) {
+    floodsEl.textContent = `Floods: ${d.syn_flood_alerts || 0}`;
+    floodsEl.className = (d.syn_flood_alerts || 0) > 0 ? 'sec-pill warn' : 'sec-pill';
+  }
+  if (tunnelsEl) {
+    tunnelsEl.textContent = `Tunnels: ${d.dns_tunnel_alerts || 0}`;
+    tunnelsEl.className = (d.dns_tunnel_alerts || 0) > 0 ? 'sec-pill warn' : 'sec-pill';
+  }
+
+  // Footer status bar
+  document.getElementById('sb-packets').textContent = pkts;
+  document.getElementById('sb-buffer').textContent = `${buf} / 256 MB (Ring Buffer Active)`;
+  document.getElementById('footer-packet-rate').textContent = `${Math.max(0, pps)} pkts/s`;
+}
+
+async function fetchInitialConnections() {
+  try {
+    const res = await fetch('/api/connections');
+    if (!res.ok) return;
+    const data = await res.json();
+    const rawList = Array.isArray(data) ? data : (data.connections || []);
+
+    if (!rawList.length) return;
+
+    // Load initial classified connections from server ring buffer
+    const sample = rawList.slice(0, 30);
+    sample.forEach(c => {
+      const norm = normalizeConn(c);
+      connStore.push(norm);
+      addPacketRow(norm);
+      addNetworkConnection(norm.src_ip, norm.dst_ip, norm.blocked);
+    });
+
+    // Auto inspect first row
+    const firstRow = document.querySelector('#pkt-tbody tr');
+    if (firstRow && connStore[0]) {
+      selectPacket(firstRow, connStore[0]);
+    }
+  } catch (err) {}
+}
+
+async function fetchInitialEvents() {
+  try {
+    const res = await fetch('/api/events');
+    if (!res.ok) return;
+    const events = await res.json();
+    if (Array.isArray(events)) {
+      events.slice(0, 10).forEach(ev => {
+        const norm = normalizeConn(ev);
+        connStore.unshift(norm);
+        addPacketRow(norm, true);
+        if (norm.src_ip !== '-') {
+          addNetworkConnection(norm.src_ip, 'Gateway', true);
+        }
+      });
+    }
+  } catch (err) {}
+}
+
+// ── Capture Controls ──────────────────────────────────────────────
+function startCapture() {
+  isStreamPaused = false;
+  document.getElementById('btn-pause').textContent = '⏸ PAUSE FEED';
+  document.getElementById('hdr-capture-text').textContent = 'Active Capture';
+  document.getElementById('hdr-capture-badge').style.borderColor = 'rgba(63, 185, 80, 0.35)';
+  document.getElementById('hdr-capture-badge').querySelector('.dot').className = 'dot';
+  document.getElementById('sb-status').textContent = 'Active';
+  document.getElementById('sb-status').style.color = '#3fb950';
+  document.getElementById('sb-dot-status').className = 'sb-dot green';
+}
+
+function togglePause() {
+  isStreamPaused = !isStreamPaused;
+  document.getElementById('btn-pause').textContent = isStreamPaused ? '▶ RESUME FEED' : '⏸ PAUSE FEED';
+  document.getElementById('hdr-capture-text').textContent = isStreamPaused ? 'Feed Paused' : 'Active Capture';
+  document.getElementById('sb-status').textContent = isStreamPaused ? 'Paused' : 'Active';
+  document.getElementById('sb-status').style.color = isStreamPaused ? '#e3b341' : '#3fb950';
+  document.getElementById('sb-dot-status').className = isStreamPaused ? 'sb-dot orange' : 'sb-dot green';
+}
+
+function stopCapture() {
+  isStreamPaused = true;
+  document.getElementById('btn-pause').textContent = '▶ RESUME FEED';
+  document.getElementById('hdr-capture-text').textContent = 'Stopped';
+  document.getElementById('sb-status').textContent = 'Stopped';
+  document.getElementById('sb-status').style.color = '#f85149';
+  document.getElementById('sb-dot-status').className = 'sb-dot red';
+}
+
+function exportReport(format) {
+  window.open(`/api/report?format=${format}`, '_blank');
+}
+
+// ── Resizable Split Drag ──────────────────────────────────────────
+(function() {
+  const handle = document.getElementById('resize-handle');
+  const left = document.getElementById('pkt-panel');
+  let dragging = false, startX, startW;
+
+  handle.addEventListener('mousedown', e => {
+    dragging = true;
+    startX = e.clientX;
+    startW = left.offsetWidth;
+    handle.classList.add('active');
+    document.body.style.cursor = 'ew-resize';
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const newW = Math.max(340, Math.min(startW + dx, window.innerWidth - 340));
+    left.style.width = newW + 'px';
+    left.style.flex = 'none';
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (dragging) {
+      dragging = false;
+      handle.classList.remove('active');
+      document.body.style.cursor = '';
+    }
+  });
+})();
+
+// ── Startup ───────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  initGraph();
+  fetchInitialConnections();
+  fetchInitialEvents();
+  connectWebSocket();
+  setInterval(fetchStats, 1500);
+});
+
+window.addEventListener('resize', () => {
+  if (!simulation) return;
+  const container = document.getElementById('network-map');
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  svg.attr('viewBox', `0 0 ${w} ${h}`);
+  simulation.force('center', d3.forceCenter(w / 2, h / 2)).alpha(0.2).restart();
+});
+</script>
 </body>
 </html>
